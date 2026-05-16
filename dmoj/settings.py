@@ -92,6 +92,7 @@ DMOJ_COMMENT_VOTE_HIDE_THRESHOLD = -5
 DMOJ_COMMENT_REPLY_TIMEFRAME = datetime.timedelta(days=365)
 
 DMOJ_PDF_PDFOID_URL = None
+DMOJ_PDF_PDFOID_TIMEOUT = 60
 # Optional but recommended to save resources, path on disk to cache PDFs
 DMOJ_PDF_PROBLEM_CACHE = None
 # Optional, URL serving DMOJ_PDF_PROBLEM_CACHE with X-Accel-Redirect
