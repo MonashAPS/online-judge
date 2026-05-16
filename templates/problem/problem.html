@@ -88,7 +88,7 @@
         {% endif %}
         {% if has_pdf_render %}
             <span class="spacer"></span>
-            <a href="{{ url('problem_pdf', problem.code) }}" class="view-pdf">
+            <a href="{{ url('problem_pdf', problem.code) }}" class="view-pdf" target="_blank" rel="noopener">
                 <span class="pdf-icon">
                     <span class="fa fa-file-pdf-o pdf-icon-logo"></span>
                     <span class="pdf-icon-bar"></span>
