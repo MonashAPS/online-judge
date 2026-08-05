@@ -1,0 +1,2094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{ title }}</title>
+    <style>
+        :root {
+            --bg: #0e1116;
+            --panel: #161b22;
+            --line: #262d38;
+            --fg: #e6edf3;
+            --muted: #8b949e;
+            --ok: #1f7a3d;
+            --ok-bright: #2ea043;
+            --first: #d4a017;
+            --fail: #6e2b28;
+            --frozen: #1f5fa8;
+            --frozen-bright: #2f81f7;
+            --judging: #7a5c12;
+            --judging-bright: #d29922;
+            --feed-width: 23rem;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        #page { display: flex; height: 100%; }
+        #main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.9rem 1.4rem;
+            border-bottom: 1px solid var(--line);
+            background: var(--panel);
+            flex: none;
+        }
+
+        .event-title { font-size: 1.5rem; font-weight: 700; letter-spacing: 0.02em; }
+        .division { font-size: 1.25rem; color: var(--muted); }
+        .division b { color: var(--fg); font-weight: 600; }
+        .spacer { flex: 1; }
+
+        .badge {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+            border: 1px solid var(--frozen-bright);
+            color: var(--frozen-bright);
+        }
+        .badge.hidden { display: none; }
+
+        button {
+            background: #21262d;
+            color: var(--fg);
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 0.4rem 0.75rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+        button:hover:not(:disabled) { background: #2d333b; }
+        button:disabled { opacity: 0.4; cursor: default; }
+
+        .dots { display: flex; gap: 0.4rem; align-items: center; }
+        .dot {
+            width: 9px; height: 9px; border-radius: 50%;
+            background: var(--line); border: none; padding: 0; cursor: pointer;
+        }
+        .dot.active { background: var(--frozen-bright); }
+
+        /* Play / pause for the auto-preview */
+        .icon-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.7rem;
+        }
+        .icon-button svg { width: 14px; height: 14px; fill: currentColor; display: block; }
+        #play.on { border-color: var(--ok-bright); color: var(--ok-bright); }
+        #play .glyph-pause { display: none; }
+        #play.on .glyph-play { display: none; }
+        #play.on .glyph-pause { display: block; }
+
+        /* Carousel */
+        #viewport { flex: 1; overflow: hidden; position: relative; }
+        #track {
+            display: flex;
+            height: 100%;
+            transition: transform 620ms cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+        .panel { flex: 0 0 100%; height: 100%; overflow-y: auto; padding: 0 1.4rem 2rem; }
+        .panel::-webkit-scrollbar { width: 8px; }
+        .panel::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+        table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
+
+        thead th {
+            position: sticky; top: 0; z-index: 2;
+            background: var(--bg);
+            color: var(--muted);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 600;
+            padding: 0.6rem 0.4rem;
+            text-align: center;
+        }
+        thead th.rank { width: 4rem; }
+        thead th.team { text-align: left; width: 40%; }
+        thead th.prob { width: 3.6rem; }
+
+        tbody tr { background: var(--panel); }
+        tbody td {
+            padding: 0.5rem 0.4rem;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+            font-size: 1.05rem;
+            border-top: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+        }
+        tbody td.rank { font-weight: 700; border-left: 1px solid var(--line); border-radius: 6px 0 0 6px; }
+        tbody td.team { text-align: left; font-size: 1.1rem; }
+
+        .badge-tag {
+            margin-left: 0.4rem;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            border: 1px solid currentColor;
+            color: var(--muted);
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        #warnings {
+            display: none;
+            color: var(--first);
+            margin-right: 0.9rem;
+        }
+        #warnings.on { display: inline; }
+
+        #attendance.filtered { border-color: var(--frozen-bright); color: var(--frozen-bright); }
+        tbody td.total { font-weight: 700; }
+        tbody td.penalty { color: var(--muted); border-right: 1px solid var(--line); border-radius: 0 6px 6px 0; }
+
+        /* Problem cells */
+        td.cell { border-radius: 4px; }
+        td.cell .val { display: block; font-weight: 600; line-height: 1.15; }
+        td.cell .sub { display: block; font-size: 0.72rem; opacity: 0.85; line-height: 1.15; }
+
+        td.cell.empty { color: var(--muted); }
+        td.cell.solved { background: var(--ok); color: #fff; }
+        td.cell.solved.first { background: var(--ok-bright); box-shadow: inset 0 0 0 2px var(--first); }
+        td.cell.failed { background: var(--fail); color: #f5c5c2; }
+        td.cell.frozen { background: var(--frozen); color: #fff; }
+        td.cell.judging { background: var(--judging); color: #fff; }
+
+        /* Reveal targeting */
+        tr.reveal-target { outline: 2px solid var(--first); }
+        tr.reveal-done { opacity: 0.75; }
+        td.cell.next-up { animation: pulse 1s ease-in-out infinite; }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: inset 0 0 0 2px var(--first); }
+            50% { box-shadow: inset 0 0 0 5px var(--first); }
+        }
+
+        /* Change animations */
+        @keyframes flash-solve {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 var(--ok-bright); }
+            35% { transform: scale(1.14); box-shadow: 0 0 22px 6px var(--ok-bright); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+        }
+        @keyframes flash-try {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 var(--frozen-bright); }
+            35% { transform: scale(1.1); box-shadow: 0 0 16px 4px var(--frozen-bright); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+        }
+        @keyframes flash-fail {
+            0% { transform: scale(1); }
+            25% { transform: translateX(-4px); }
+            60% { transform: translateX(4px); }
+            100% { transform: translateX(0); }
+        }
+        td.flash-solve { animation: flash-solve 1.1s ease-out; }
+        td.flash-try { animation: flash-try 0.9s ease-out; }
+        td.flash-fail { animation: flash-fail 0.5s ease-out; }
+        tr.row-moved td { background: #1d2530; }
+
+        #empty-state { padding: 3rem; text-align: center; color: var(--muted); font-size: 1.2rem; }
+
+        footer {
+            flex: none;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.5rem 1.4rem;
+            border-top: 1px solid var(--line);
+            background: var(--panel);
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        footer .legend { display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 0.9rem; }
+        footer .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+        #reveal-bar { display: none; align-items: center; gap: 0.6rem; }
+        #reveal-bar.on { display: flex; }
+        #reveal-status { color: var(--first); }
+
+        /* ---------------------------------------------------------------- */
+        /* Event feed                                                        */
+        /* ---------------------------------------------------------------- */
+
+        #feed {
+            flex: none;
+            width: var(--feed-width);
+            display: flex;
+            flex-direction: column;
+            background: var(--panel);
+            border-left: 1px solid var(--line);
+            overflow: hidden;
+            transition: width 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+        #page.feed-collapsed #feed { width: 0; border-left-width: 0; }
+
+        .feed-head {
+            flex: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.9rem 1rem;
+            border-bottom: 1px solid var(--line);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+        .feed-head button {
+            padding: 0.15rem 0.45rem;
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        #feed-list {
+            list-style: none;
+            margin: 0;
+            padding: 0.5rem 0.6rem 1.5rem;
+            overflow-y: auto;
+            flex: 1;
+        }
+        #feed-list::-webkit-scrollbar { width: 8px; }
+        #feed-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+        .feed-item {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            grid-template-areas: "time div chip" "who who who";
+            gap: 0.15rem 0.5rem;
+            align-items: center;
+            padding: 0.5rem 0.6rem;
+            margin-bottom: 0.35rem;
+            border-radius: 6px;
+            background: #1b222c;
+            border-left: 3px solid var(--line);
+            font-size: 0.88rem;
+            white-space: nowrap;
+        }
+        .feed-item.correct { --edge: var(--ok-bright); border-left-color: var(--edge); }
+        .feed-item.pending { --edge: var(--frozen-bright); border-left-color: var(--edge); }
+        .feed-item.incorrect { --edge: #b5453f; border-left-color: var(--edge); }
+
+        .feed-time { grid-area: time; color: var(--muted); font-variant-numeric: tabular-nums; }
+        .feed-div {
+            grid-area: div;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .feed-line { grid-area: who; overflow: hidden; text-overflow: ellipsis; }
+        .feed-line b { font-weight: 600; }
+        .feed-line .who { color: var(--fg); }
+        .feed-line .said { color: var(--muted); }
+
+        .feed-chip {
+            grid-area: chip;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            border: 1px solid currentColor;
+        }
+        .feed-item.correct .feed-chip { color: var(--ok-bright); }
+        .feed-item.pending .feed-chip { color: var(--frozen-bright); }
+        .feed-item.incorrect .feed-chip { color: #e5817b; }
+
+        @keyframes feed-in {
+            from { opacity: 0; transform: translateX(1.5rem); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .feed-item.fresh { animation: feed-in 420ms ease-out; }
+
+        /* A verdict landing on an entry already in the list. Without this the
+           chip silently changes colour between two glances at the screen. */
+        @keyframes feed-settle {
+            0% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+            30% { box-shadow: 0 0 14px 2px var(--edge); background: #232c38; }
+            100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+        }
+        .feed-item.settled { animation: feed-settle 1.1s ease-out; }
+        .feed-item.settled .feed-chip { animation: feed-settle 1.1s ease-out; }
+
+        #feed-empty { padding: 1.5rem 1rem; color: var(--muted); font-size: 0.9rem; white-space: normal; }
+        #feed-empty.hidden { display: none; }
+
+        /* ---------------------------------------------------------------- */
+        /* Tag editing (staff only)                                          */
+        /* ---------------------------------------------------------------- */
+
+        #edit-toggle.on { border-color: var(--first); color: var(--first); }
+
+        /* The per-row buttons only exist while edit mode is on. They are in the
+           DOM either way so toggling the mode is a class flip rather than a
+           repaint of every board. */
+        #page:not(.editing) .row-edit { display: none; }
+        #page.editing tbody td.team { padding-right: 2.4rem; }
+        tbody td.team { position: relative; }
+
+        .row-edit {
+            position: absolute;
+            right: 0.4rem;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 0.15rem 0.35rem;
+            line-height: 1;
+            font-size: 0.8rem;
+            color: var(--muted);
+            opacity: 0.65;
+        }
+        .row-edit:hover:not(:disabled) { opacity: 1; color: var(--first); border-color: var(--first); }
+        .row-edit svg { width: 12px; height: 12px; fill: currentColor; display: block; }
+
+        /* Edit mode dims the board slightly so nobody mistakes a staff session
+           for the hall display. */
+        #page.editing #viewport { background: rgba(212, 160, 23, 0.03); }
+
+        #tag-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.6);
+        }
+        #tag-modal.on { display: flex; }
+
+        .modal-card {
+            width: min(26rem, calc(100vw - 2rem));
+            max-height: calc(100vh - 4rem);
+            display: flex;
+            flex-direction: column;
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+        }
+        .modal-head {
+            padding: 1rem 1.2rem 0.6rem;
+            border-bottom: 1px solid var(--line);
+        }
+        .modal-title { font-size: 1.1rem; font-weight: 600; }
+        .modal-sub { font-size: 0.82rem; color: var(--muted); margin-top: 0.2rem; }
+        .modal-body { padding: 0.7rem 1.2rem; overflow-y: auto; }
+        .modal-foot {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.8rem 1.2rem 1rem;
+            border-top: 1px solid var(--line);
+        }
+        .modal-foot .spacer { flex: 1; }
+        #tag-save { border-color: var(--ok-bright); color: var(--ok-bright); }
+
+        .tag-option {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.5rem 0.6rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .tag-option:hover { background: #1b222c; }
+        .tag-option input { width: 1rem; height: 1rem; accent-color: var(--frozen-bright); cursor: pointer; }
+        .tag-option .swatch-dot {
+            width: 10px; height: 10px; border-radius: 3px;
+            border: 1px solid currentColor; color: var(--muted); flex: none;
+        }
+        .tag-option .note { margin-left: auto; font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+        #tag-error { color: #e5817b; font-size: 0.85rem; min-height: 1.1em; }
+        #tag-empty { color: var(--muted); font-size: 0.9rem; padding: 0.6rem 0; }
+
+        @media (prefers-reduced-motion: reduce) {
+            #track, #feed { transition: none; }
+            td.flash-solve, td.flash-try, td.flash-fail, td.cell.next-up,
+            .feed-item.fresh, .feed-item.settled,
+            .feed-item.settled .feed-chip { animation: none; }
+        }
+    </style>
+</head>
+<body>
+<div id="page">
+    <div id="main">
+        <header>
+            <span class="event-title">{{ title }}</span>
+            <span class="division">&mdash;&nbsp;<b id="division-label"></b></span>
+            <span id="frozen-badge" class="badge hidden">Frozen</span>
+            <span class="spacer"></span>
+            {% if payload.has_roster %}
+                <button type="button" id="attendance"></button>
+            {% endif %}
+            {% if payload.can_edit_tags %}
+                <button type="button" id="edit-toggle" class="icon-button"
+                        title="Edit competitor tags (E)" aria-pressed="false">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.1 1.3l2.6 2.6-1.5 1.5-2.6-2.6zM9.5 3.9l2.6 2.6-7 7L1 15l1.5-4.1z"/></svg>
+                    <span>Edit tags</span>
+                </button>
+            {% endif %}
+            {% if can_reveal %}
+                <div id="reveal-bar">
+                    <span id="reveal-status"></span>
+                    <button type="button" id="reveal-step">Reveal next</button>
+                    <button type="button" id="reveal-undo">Undo</button>
+                    <button type="button" id="reveal-all">Reveal all</button>
+                    <button type="button" id="reveal-exit">Exit</button>
+                </div>
+                <button type="button" id="reveal-enter">Start reveal</button>
+            {% endif %}
+            <button type="button" id="prev" title="Previous division">&#9664;</button>
+            <div class="dots" id="dots"></div>
+            <button type="button" id="next" title="Next division">&#9654;</button>
+            <button type="button" id="play" class="icon-button" title="Start the auto-preview (P)">
+                <svg class="glyph-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1.5l11 6.5-11 6.5z"/></svg>
+                <svg class="glyph-pause" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2h4v12H3zM9 2h4v12H9z"/></svg>
+                <span id="play-label">Play</span>
+            </button>
+            <button type="button" id="feed-toggle" title="Show or hide the event feed (F)">Events</button>
+        </header>
+
+        <div id="viewport">
+            <div id="track"></div>
+        </div>
+
+        <footer>
+            <span class="legend"><span class="swatch" style="background: var(--ok)"></span> Solved</span>
+            <span class="legend"><span class="swatch" style="background: var(--ok-bright); box-shadow: inset 0 0 0 2px var(--first)"></span> First to solve</span>
+            <span class="legend"><span class="swatch" style="background: var(--frozen)"></span> Frozen &mdash; submitted in the final {{ payload.freeze_minutes }} min, result withheld</span>
+            <span class="legend"><span class="swatch" style="background: var(--judging)"></span> Judging &mdash; still with the judge</span>
+            <span class="legend"><span class="swatch" style="background: var(--fail)"></span> Attempted</span>
+            <span class="spacer"></span>
+            <span id="warnings"></span>
+            <span id="status-line"></span>
+        </footer>
+    </div>
+
+    <aside id="feed">
+        <div class="feed-head">
+            <span>Event feed</span>
+            <span class="spacer"></span>
+            <button type="button" id="feed-close" title="Hide the event feed">&#10005;</button>
+        </div>
+        <div id="feed-empty">Submissions appear here as they land.</div>
+        <ol id="feed-list"></ol>
+    </aside>
+</div>
+
+{% if payload.can_edit_tags %}
+    <div id="tag-modal" role="dialog" aria-modal="true" aria-labelledby="tag-title">
+        <div class="modal-card">
+            <div class="modal-head">
+                <div class="modal-title" id="tag-title"></div>
+                <div class="modal-sub" id="tag-subtitle"></div>
+            </div>
+            <div class="modal-body" id="tag-options"></div>
+            <div class="modal-foot">
+                <span id="tag-error" role="alert"></span>
+                <span class="spacer"></span>
+                <button type="button" id="tag-cancel">Cancel</button>
+                <button type="button" id="tag-save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    {# Rendered by the tag so the value is correct whatever the CSRF settings;
+       the script reads it out rather than posting the form. #}
+    <form id="csrf-holder" style="display: none">{% csrf_token %}</form>
+{% endif %}
+
+<script id="initial-payload" type="application/json">{{ payload_json|safe }}</script>
+<script>
+(function () {
+    'use strict';
+
+    var DATA_URL = '{{ url('live_scoreboard_data', event) }}';
+    var TAGS_URL = '{{ url('live_scoreboard_tags', event) }}';
+    var payload = JSON.parse(document.getElementById('initial-payload').textContent);
+    var CAN_REVEAL = !!payload.can_reveal;
+    var CAN_EDIT_TAGS = !!payload.can_edit_tags;
+    var HAS_ROSTER = !!payload.has_roster;
+    var ATTENDANCE_KEY = 'scoreboard-attendance:' + payload.event;
+    var FEED_KEY = 'scoreboard-feed:' + payload.event;
+
+    // Most entries the sidebar keeps. The server already caps what it sends per
+    // division; this caps the merged list so the DOM cannot grow without bound
+    // over a long event.
+    var FEED_MAX = 200;
+
+    // How long entries take to slide down out of the way of an arrival. Matches
+    // the feed-in keyframe so the new entry lands as the column comes to rest.
+    var FEED_SHIFT_MS = 420;
+
+    var REDUCED_MOTION = window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Badge definitions by organisation slug, so rows can carry just the slugs.
+    // Rebuilt on every poll, since renaming an organisation should show up
+    // without reloading the page.
+    var BADGES = {};
+    function rebuildBadges() {
+        BADGES = {};
+        (payload.badges || []).forEach(function (badge) { BADGES[badge.key] = badge; });
+    }
+    rebuildBadges();
+
+    var page = document.getElementById('page');
+    var track = document.getElementById('track');
+    var dotsBox = document.getElementById('dots');
+    var divisionLabel = document.getElementById('division-label');
+    var frozenBadge = document.getElementById('frozen-badge');
+    var statusLine = document.getElementById('status-line');
+    var playButton = document.getElementById('play');
+    var playLabel = document.getElementById('play-label');
+    var feedList = document.getElementById('feed-list');
+    var feedEmpty = document.getElementById('feed-empty');
+
+    var active = 0;
+    var pollTimer = null;
+
+    // Set by the local test fixtures (DEBUG builds only). Once on, the payload
+    // is canned and nothing may fetch over it.
+    var fixtureMode = false;
+
+    // Per-board snapshot of what was on screen the last time that board was
+    // looked at. Diffing against this is what drives the change animations, so
+    // a board that changed while off screen lights up when it rotates back in.
+    var seen = {};
+
+    // The state each already-drawn feed entry was last seen in, keyed by
+    // submission. Holding the state rather than just the id is what lets a
+    // verdict landing on an existing entry animate: presence alone would make a
+    // pending entry turning green indistinguishable from one that never moved.
+    var feedSeen = {};
+    var feedPainted = false;
+
+    // Reveal state. Only ever populated for admins.
+    var reveal = null;
+
+    // Tag editing state. Only ever populated for staff.
+    //
+    // `editing` just shows the per-row buttons; nothing is written until the
+    // modal is saved. `editable` is the badge list the server says may be
+    // touched, fetched once on first use -- it can differ from `payload.badges`
+    // when an event names an in-person organisation that is not also a badge.
+    var editing = false;
+    var editable = null;
+    var editTarget = null;
+
+    // 'all' or 'in_person'. Remembered per browser so a display box that gets
+    // refreshed or restarted mid-event comes back up the way it was left.
+    var attendance = 'all';
+    if (HAS_ROSTER) {
+        try {
+            if (localStorage.getItem(ATTENDANCE_KEY) === 'in_person') attendance = 'in_person';
+        } catch (error) {
+            // Private browsing or a locked-down kiosk profile: just use the default.
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Helpers                                                             */
+    /* ------------------------------------------------------------------ */
+
+    function boards() {
+        return payload.boards || [];
+    }
+
+    function currentBoard() {
+        return boards()[active];
+    }
+
+    function minutes(seconds) {
+        return Math.floor(seconds / 60);
+    }
+
+    function clone(value) {
+        return JSON.parse(JSON.stringify(value));
+    }
+
+    function signature(cell) {
+        return cell.state + ':' + cell.wrong + ':' + cell.pending;
+    }
+
+    function panelFor(index) {
+        return track.children[index];
+    }
+
+    function previewConfig() {
+        return payload.preview || {};
+    }
+
+    function seconds(value, fallback) {
+        var number = Number(value);
+        return (isFinite(number) && number >= 0 ? number : fallback) * 1000;
+    }
+
+    // Rows are ranked server-side, but the reveal re-ranks client-side, so the
+    // ordering rule lives here too and must match frozen_scoreboard.rank_rows.
+    function compareRows(a, b) {
+        return (b.solved - a.solved) || (a.penalty - b.penalty) ||
+            (a.username < b.username ? -1 : a.username > b.username ? 1 : 0);
+    }
+
+    function assignRanks(rows, field) {
+        var lastKey = null;
+        var rank = 0;
+        rows.forEach(function (row, i) {
+            var key = row.solved + '/' + row.penalty;
+            if (key !== lastKey) {
+                rank = i + 1;
+                lastKey = key;
+            }
+            row[field] = rank;
+        });
+        return rows;
+    }
+
+    function rankRows(rows) {
+        rows.sort(compareRows);
+        return assignRanks(rows, 'rank');
+    }
+
+    // The rows actually on screen: filtered by the attendance toggle and then
+    // re-ranked, so an in-person-only board reads 1, 2, 3 with no gaps where a
+    // remote competitor was. These are the *same* row objects as board.rows,
+    // not copies, so the reveal can mutate cells through either view.
+    function displayRows(board) {
+        var rows = attendance === 'in_person'
+            ? board.rows.filter(function (row) { return row.in_person; })
+            : board.rows.slice();
+        rows.sort(compareRows);
+        return assignRanks(rows, 'displayRank');
+    }
+
+    // First accepted solve per problem, recomputed on every render so it stays
+    // correct as the reveal turns pending cells green.
+    function firstSolves(board) {
+        var best = {};
+        board.rows.forEach(function (row) {
+            row.cells.forEach(function (cell, i) {
+                if (cell.state !== 'solved') return;
+                if (best[i] === undefined || cell.time < best[i]) best[i] = cell.time;
+            });
+        });
+        return best;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Rendering                                                           */
+    /* ------------------------------------------------------------------ */
+
+    function buildPanels() {
+        track.innerHTML = '';
+        dotsBox.innerHTML = '';
+
+        boards().forEach(function (board, i) {
+            var panel = document.createElement('div');
+            panel.className = 'panel';
+            panel.dataset.key = board.key;
+            track.appendChild(panel);
+
+            var dot = document.createElement('button');
+            dot.type = 'button';
+            dot.className = 'dot';
+            dot.title = board.label;
+            dot.addEventListener('click', function () { goTo(i, true); });
+            dotsBox.appendChild(dot);
+        });
+
+        track.style.width = (boards().length * 100) + '%';
+        Array.prototype.forEach.call(track.children, function (panel) {
+            panel.style.width = (100 / boards().length) + '%';
+            panel.style.flex = '0 0 ' + (100 / boards().length) + '%';
+        });
+    }
+
+    function renderCell(cell, isFirst) {
+        var td = document.createElement('td');
+        td.className = 'cell ' + cell.state + (isFirst ? ' first' : '');
+
+        var val = document.createElement('span');
+        val.className = 'val';
+        var sub = document.createElement('span');
+        sub.className = 'sub';
+
+        if (cell.state === 'solved') {
+            val.textContent = minutes(cell.time);
+            sub.textContent = cell.wrong ? '+' + cell.wrong : ' ';
+        } else if (cell.state === 'frozen') {
+            val.textContent = '?';
+            sub.textContent = (cell.wrong + cell.pending) + ' sub' +
+                (cell.wrong + cell.pending === 1 ? '' : 's');
+        } else if (cell.state === 'judging') {
+            val.textContent = '?';
+            sub.textContent = cell.pending === 1 ? 'judging' : cell.pending + ' judging';
+        } else if (cell.state === 'failed') {
+            val.textContent = '✗';
+            sub.textContent = cell.wrong + ' tr' + (cell.wrong === 1 ? 'y' : 'ies');
+        } else {
+            val.textContent = ' ';
+            sub.textContent = ' ';
+        }
+
+        td.appendChild(val);
+        td.appendChild(sub);
+        return td;
+    }
+
+    function renderBoard(index, animate) {
+        var board = boards()[index];
+        var panel = panelFor(index);
+        if (!board || !panel) return;
+
+        // A repaint blows away the panel's contents, and with them its scroll
+        // position. The auto-preview is often part way down the board when a
+        // poll lands, so put it back afterwards rather than yanking the hall
+        // back to the top every twenty seconds.
+        var scrollTop = panel.scrollTop;
+
+        var rows = displayRows(board);
+        if (!rows.length) {
+            panel.innerHTML = '<div id="empty-state">' + (board.rows.length
+                ? 'No in-person competitors in this division.'
+                : 'No entrants yet.') + '</div>';
+            return;
+        }
+
+        // FLIP step one: where is every row right now?
+        var before = {};
+        Array.prototype.forEach.call(panel.querySelectorAll('tr[data-row]'), function (tr) {
+            before[tr.dataset.row] = tr.getBoundingClientRect().top;
+        });
+
+        var previous = seen[board.key] || null;
+        var firsts = firstSolves(board);
+
+        var table = document.createElement('table');
+        var thead = document.createElement('thead');
+        var headRow = document.createElement('tr');
+        headRow.innerHTML = '<th class="rank">#</th><th class="team">Team</th>';
+        board.problems.forEach(function (problem) {
+            var th = document.createElement('th');
+            th.className = 'prob';
+            th.title = problem.name;
+            th.textContent = problem.label;
+            headRow.appendChild(th);
+        });
+        headRow.insertAdjacentHTML('beforeend', '<th class="prob">Solved</th><th class="prob">Time</th>');
+        thead.appendChild(headRow);
+        table.appendChild(thead);
+
+        var tbody = document.createElement('tbody');
+        rows.forEach(function (row) {
+            var tr = document.createElement('tr');
+            tr.dataset.row = row.id;
+
+            var rank = document.createElement('td');
+            rank.className = 'rank';
+            rank.textContent = row.displayRank;
+            tr.appendChild(rank);
+
+            var team = document.createElement('td');
+            team.className = 'team';
+            team.textContent = row.display_name || row.username;
+            (row.badges || []).forEach(function (key) {
+                var badge = BADGES[key];
+                if (!badge) return;
+                // While filtered to the hall every visible row carries the
+                // in-person badge, so showing it is just noise.
+                if (attendance === 'in_person' && key === payload.in_person_badge) return;
+                var tag = document.createElement('span');
+                tag.className = 'badge-tag';
+                tag.textContent = badge.label;
+                if (badge.color) tag.style.color = badge.color;
+                team.appendChild(tag);
+            });
+            // Present for staff whatever the mode; CSS hides it until edit mode
+            // is on, so toggling the mode never costs a repaint.
+            if (CAN_EDIT_TAGS) team.appendChild(rowEditButton(board, row));
+            tr.appendChild(team);
+
+            row.cells.forEach(function (cell, i) {
+                var td = renderCell(cell, cell.state === 'solved' && firsts[i] === cell.time);
+                var key = row.id + ':' + i;
+
+                // Flash anything that differs from the last time this board was
+                // on screen. A board seen for the first time never flashes.
+                if (animate && previous && previous[key] && previous[key] !== signature(cell)) {
+                    if (cell.state === 'solved') td.classList.add('flash-solve');
+                    else if (cell.state === 'frozen' || cell.state === 'judging') td.classList.add('flash-try');
+                    else if (cell.state === 'failed') td.classList.add('flash-fail');
+                }
+                tr.appendChild(td);
+            });
+
+            var total = document.createElement('td');
+            total.className = 'total';
+            total.textContent = row.solved;
+            tr.appendChild(total);
+
+            var pen = document.createElement('td');
+            pen.className = 'penalty';
+            pen.textContent = row.penalty;
+            tr.appendChild(pen);
+
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+
+        panel.innerHTML = '';
+        panel.appendChild(table);
+        panel.scrollTop = Math.min(scrollTop, Math.max(0, panel.scrollHeight - panel.clientHeight));
+
+        if (reveal && reveal.boardIndex === index) markRevealTarget(panel);
+
+        // FLIP step two: invert the movement, then let it play out.
+        if (animate) {
+            Array.prototype.forEach.call(panel.querySelectorAll('tr[data-row]'), function (tr) {
+                var old = before[tr.dataset.row];
+                if (old === undefined) return;
+                var delta = old - tr.getBoundingClientRect().top;
+                if (Math.abs(delta) < 2) return;
+                tr.classList.add('row-moved');
+                tr.style.transform = 'translateY(' + delta + 'px)';
+                tr.style.transition = 'none';
+                requestAnimationFrame(function () {
+                    tr.style.transition = 'transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1)';
+                    tr.style.transform = '';
+                    setTimeout(function () { tr.classList.remove('row-moved'); }, 800);
+                });
+            });
+        }
+    }
+
+    // Record what is on screen so the next look at this board can diff it.
+    function snapshot(board) {
+        var map = {};
+        board.rows.forEach(function (row) {
+            row.cells.forEach(function (cell, i) {
+                map[row.id + ':' + i] = signature(cell);
+            });
+        });
+        seen[board.key] = map;
+    }
+
+    // Config problems the server noticed. Only ever populated for admins, so
+    // the hall never sees a slug typo on the projector.
+    function showWarnings() {
+        var box = document.getElementById('warnings');
+        var messages = payload.warnings || [];
+        box.textContent = messages.join(' · ');
+        box.classList.toggle('on', !!messages.length);
+    }
+
+    function setAttendance(value) {
+        attendance = value;
+        try {
+            localStorage.setItem(ATTENDANCE_KEY, value);
+        } catch (error) {
+            // Not persistable here; the toggle still works for this session.
+        }
+        // Rows appear and disappear wholesale, so a move animation would just
+        // be noise. Repaint flat and let the new ordering stand.
+        boards().forEach(function (board, i) { renderBoard(i, false); });
+        boards().forEach(snapshot);
+        refreshChrome();
+    }
+
+    function refreshChrome() {
+        var board = currentBoard();
+        if (!board) return;
+        divisionLabel.textContent = board.label;
+
+        if (HAS_ROSTER) {
+            var button = document.getElementById('attendance');
+            var filtered = attendance === 'in_person';
+            button.textContent = filtered
+                ? 'In person only (' + board.in_person_count + ')'
+                : 'All competitors (' + board.rows.length + ')';
+            button.classList.toggle('filtered', filtered);
+            button.title = filtered
+                ? 'Showing only competitors in the hall — click to show everyone'
+                : 'Showing everyone — click to hide remote competitors';
+        }
+
+        frozenBadge.classList.toggle('hidden', !board.is_frozen);
+        Array.prototype.forEach.call(dotsBox.children, function (dot, i) {
+            dot.classList.toggle('active', i === active);
+        });
+        if (CAN_REVEAL) {
+            // Asks the reveal itself whether it has anything to do, so the
+            // button greys out when the attendance filter hides every frozen row.
+            var pending = !!nextTarget(board);
+            var enter = document.getElementById('reveal-enter');
+            enter.style.display = reveal ? 'none' : '';
+            enter.disabled = !pending;
+            enter.title = pending ? '' : 'Nothing frozen in the current view';
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Carousel                                                            */
+    /* ------------------------------------------------------------------ */
+
+    function goTo(index, manual) {
+        var count = boards().length;
+        if (!count) return;
+        active = ((index % count) + count) % count;
+        track.style.transform = 'translateX(-' + (active * (100 / count)) + '%)';
+        var panel = panelFor(active);
+        if (panel) panel.scrollTop = 0;
+        refreshChrome();
+        renderBoard(active, true);
+        snapshot(currentBoard());
+        // Driving the carousel by hand does not stop the preview, it restarts
+        // it: whoever pressed play still wants the tour, just from here.
+        if (manual && preview.on) previewCycle();
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Auto-preview                                                        */
+    /* ------------------------------------------------------------------ */
+
+    // One cycle per division: sit at the top, crawl to the bottom, sit at the
+    // bottom, swap. Nothing moves until someone presses play, so the board is
+    // safe to leave on a projector while people read it.
+    var preview = { on: false, timer: null, frame: null };
+
+    function previewHalt() {
+        clearTimeout(preview.timer);
+        preview.timer = null;
+        if (preview.frame !== null) cancelAnimationFrame(preview.frame);
+        preview.frame = null;
+    }
+
+    function previewWait(ms, next) {
+        preview.timer = setTimeout(function () {
+            if (preview.on) next();
+        }, ms);
+    }
+
+    // Scrolls at a constant speed rather than over a fixed duration: one
+    // screenful takes `scroll_seconds`, so a long division takes proportionally
+    // longer instead of whipping past at an unreadable rate.
+    function previewScroll(panel, next) {
+        var perScreen = seconds(previewConfig().scroll_seconds, 12);
+        var start = panel.scrollTop;
+        var distance = Math.max(0, panel.scrollHeight - panel.clientHeight) - start;
+
+        if (!perScreen || distance < 8 || REDUCED_MOTION || !panel.clientHeight) {
+            panel.scrollTop = start + Math.max(0, distance);
+            next();
+            return;
+        }
+
+        var duration = perScreen * (distance / panel.clientHeight);
+        var began = null;
+
+        function step(now) {
+            if (!preview.on) return;
+            if (began === null) began = now;
+            var t = Math.min(1, (now - began) / duration);
+            // Ease in and out so the start and stop are not abrupt, but the
+            // long middle stretch stays close to constant speed.
+            var eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+            // Recomputed every frame: a poll landing mid-scroll can change the
+            // board's height under us, and the crawl should still end at the
+            // real bottom.
+            var reach = Math.max(0, panel.scrollHeight - panel.clientHeight) - start;
+            panel.scrollTop = start + reach * eased;
+            if (t < 1) {
+                preview.frame = requestAnimationFrame(step);
+            } else {
+                preview.frame = null;
+                next();
+            }
+        }
+        preview.frame = requestAnimationFrame(step);
+    }
+
+    function previewCycle() {
+        previewHalt();
+        if (!preview.on) return;
+        var panel = panelFor(active);
+        if (!panel) return;
+
+        panel.scrollTop = 0;
+        previewWait(seconds(previewConfig().top_seconds, 4), function () {
+            previewScroll(panel, function () {
+                previewWait(seconds(previewConfig().bottom_seconds, 4), function () {
+                    // A single-division event has nowhere to swap to, so it just
+                    // tours the same board again.
+                    if (boards().length > 1) goTo(active + 1, false);
+                    previewCycle();
+                });
+            });
+        });
+    }
+
+    function setPreview(on) {
+        preview.on = on && boards().length > 0;
+        previewHalt();
+        playButton.classList.toggle('on', preview.on);
+        playLabel.textContent = preview.on ? 'Pause' : 'Play';
+        playButton.title = preview.on
+            ? 'Pause the auto-preview (P)'
+            : 'Start the auto-preview (P)';
+        if (preview.on) previewCycle();
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Event feed                                                          */
+    /* ------------------------------------------------------------------ */
+
+    function feedCollapsed() {
+        return page.classList.contains('feed-collapsed');
+    }
+
+    function setFeedCollapsed(collapsed) {
+        page.classList.toggle('feed-collapsed', collapsed);
+        document.getElementById('feed-toggle').setAttribute('aria-expanded', String(!collapsed));
+        try {
+            localStorage.setItem(FEED_KEY, collapsed ? 'collapsed' : 'open');
+        } catch (error) {
+            // Not persistable here; the toggle still works for this session.
+        }
+    }
+
+    function clockTime(iso) {
+        var when = new Date(iso);
+        if (isNaN(when.getTime())) return '';
+        return when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+
+    // Every division's events in one chronological list, newest first, each
+    // tagged with the division it came from. Ties break on submission id so the
+    // ordering is stable between polls.
+    function mergedEvents() {
+        var merged = [];
+        boards().forEach(function (board) {
+            (board.events || []).forEach(function (item) {
+                merged.push({ item: item, board: board });
+            });
+        });
+        merged.forEach(function (entry) { entry.at = Date.parse(entry.item.at) || 0; });
+        merged.sort(function (a, b) { return (b.at - a.at) || (b.item.id - a.item.id); });
+        return merged.slice(0, FEED_MAX);
+    }
+
+    // Paints one entry into a list item. Kept separate from renderFeed because
+    // the same node is refilled across polls rather than thrown away.
+    function fillFeedItem(li, entry, key) {
+        var item = entry.item;
+        li.className = 'feed-item ' + item.state;
+        // Two submissions by the same competitor on the same problem look
+        // identical; the key is what tells them apart when inspecting.
+        li.dataset.event = key;
+        li.textContent = '';
+
+        var time = document.createElement('span');
+        time.className = 'feed-time';
+        time.textContent = clockTime(item.at);
+        time.title = 'Contest minute ' + item.minute;
+        li.appendChild(time);
+
+        var division = document.createElement('span');
+        division.className = 'feed-div';
+        division.textContent = entry.board.label;
+        division.title = entry.board.label;
+        li.appendChild(division);
+
+        var chip = document.createElement('span');
+        chip.className = 'feed-chip';
+        chip.textContent = item.state === 'correct' ? 'Correct'
+            : item.state === 'pending' ? 'Pending' : 'Incorrect';
+        chip.title = item.masked
+            ? 'Hidden until the freeze lifts'
+            : item.verdict;
+        li.appendChild(chip);
+
+        var line = document.createElement('span');
+        line.className = 'feed-line';
+        var who = document.createElement('b');
+        who.className = 'who';
+        who.textContent = item.display_name || item.username;
+        var said = document.createElement('span');
+        said.className = 'said';
+        said.textContent = ' submitted problem ';
+        var problem = document.createElement('b');
+        problem.textContent = item.problem;
+        line.appendChild(who);
+        line.appendChild(said);
+        line.appendChild(problem);
+        li.appendChild(line);
+    }
+
+    function renderFeed() {
+        var merged = mergedEvents();
+        feedEmpty.classList.toggle('hidden', !!merged.length);
+        // Someone reading back through the feed should not be dragged to the
+        // top by a poll; someone watching the live end should stay pinned there.
+        var wasScrolled = feedList.scrollTop > 4;
+        var previousScroll = feedList.scrollTop;
+
+        // Where everything currently sits. Rebuilding the list from scratch
+        // would drop each entry straight into its new slot, which reads as the
+        // text being rewritten in place rather than the column moving down; the
+        // nodes are re-used instead and the ones that shifted are animated from
+        // their old offset to their new one (a FLIP).
+        var existing = {};
+        var before = {};
+        var anchor = null;
+        Array.prototype.forEach.call(feedList.children, function (node) {
+            var key = node.dataset.event;
+            existing[key] = node;
+            before[key] = node.offsetTop;
+            // The first entry the reader can still see, used to hold their
+            // place when arrivals push the list down underneath them.
+            if (!anchor && node.offsetTop + node.offsetHeight > previousScroll) anchor = node;
+        });
+
+        var nowSeen = {};
+        var kept = [];
+
+        merged.forEach(function (entry) {
+            var item = entry.item;
+            var key = entry.board.key + ':' + item.id;
+            var was = feedSeen[key];
+            nowSeen[key] = item.state;
+
+            var reused = existing[key];
+            var li = reused || document.createElement('li');
+            delete existing[key];
+            fillFeedItem(li, entry, key);
+            // A first sighting slides in; an entry whose verdict has since
+            // landed pulses in place. Everything else is left alone, so a poll
+            // does not replay the whole list every twenty seconds.
+            if (feedPainted && !REDUCED_MOTION) {
+                if (was === undefined) li.classList.add('fresh');
+                else if (was !== item.state) li.classList.add('settled');
+            }
+            // appendChild moves a node that is already in the list, so ordering
+            // and insertion are the same operation.
+            feedList.appendChild(li);
+            if (reused) kept.push({ node: li, key: key, from: before[key] });
+        });
+
+        // Whatever is left has aged out past FEED_MAX.
+        Object.keys(existing).forEach(function (key) {
+            feedList.removeChild(existing[key]);
+        });
+
+        if (wasScrolled) {
+            // Reading back: absorb the arrivals above into the scroll offset so
+            // the entry under the reader's eye does not move at all.
+            var held = anchor && anchor.parentNode === feedList;
+            feedList.scrollTop = held
+                ? previousScroll + (anchor.offsetTop - before[anchor.dataset.event])
+                : previousScroll;
+        } else {
+            feedList.scrollTop = 0;
+            if (feedPainted && !REDUCED_MOTION) {
+                kept.forEach(function (moved) {
+                    var delta = moved.from - moved.node.offsetTop;
+                    if (!delta || typeof moved.node.animate !== 'function') return;
+                    moved.node.animate([
+                        { transform: 'translateY(' + delta + 'px)' },
+                        { transform: 'none' },
+                    ], { duration: FEED_SHIFT_MS, easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)' });
+                });
+            }
+        }
+
+        feedSeen = nowSeen;
+        feedPainted = true;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Polling                                                             */
+    /* ------------------------------------------------------------------ */
+
+    function poll() {
+        if (fixtureMode) return;  // fixtures own the payload; live data would undo them
+        if (reveal) return;  // never let a refresh stomp on a reveal in progress
+        // A poll replaces every row object, which would leave the open modal
+        // editing a row that is no longer on the board. Skip it; the next one
+        // lands within poll_seconds of the modal closing.
+        if (tagModalOpen()) return;
+        fetch(DATA_URL, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+            .then(function (response) {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.json();
+            })
+            .then(function (fresh) {
+                payload = fresh;
+                rebuildBadges();
+                showWarnings();
+                if (fresh.boards.length !== track.children.length) buildPanels();
+                // Repaint the visible board with animation; the rest silently,
+                // so their changes are saved up for when they rotate in.
+                boards().forEach(function (board, i) {
+                    if (i === active) {
+                        renderBoard(i, true);
+                        snapshot(board);
+                    } else {
+                        renderBoard(i, false);
+                    }
+                });
+                refreshChrome();
+                renderFeed();
+                statusLine.textContent = 'Updated ' + new Date().toLocaleTimeString();
+            })
+            .catch(function (error) {
+                statusLine.textContent = 'Update failed (' + error.message + ') — retrying';
+            });
+    }
+
+    function restartPolling() {
+        clearInterval(pollTimer);
+        pollTimer = setInterval(poll, (payload.poll_seconds || 20) * 1000);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Reveal (admins only)                                                */
+    /* ------------------------------------------------------------------ */
+
+    // Lowest-ranked row that still has something frozen, and its leftmost
+    // frozen cell. This is the bottom-up ICPC ceremony order.
+    //
+    // Deliberately walks the *displayed* rows, so revealing an in-person-only
+    // board never stops to resolve a remote competitor nobody can see. Switch
+    // the toggle back to All to reveal the rest.
+    function nextTarget(board) {
+        var rows = displayRows(board);
+        for (var r = rows.length - 1; r >= 0; r--) {
+            for (var c = 0; c < rows[r].cells.length; c++) {
+                if (rows[r].cells[c].state === 'frozen') {
+                    return { row: rows[r], cell: c, position: r, rank: rows[r].displayRank };
+                }
+            }
+        }
+        return null;
+    }
+
+    function markRevealTarget(panel) {
+        var board = boards()[reveal.boardIndex];
+        var target = nextTarget(board);
+        var rows = panel.querySelectorAll('tr[data-row]');
+        Array.prototype.forEach.call(rows, function (tr, i) {
+            tr.classList.toggle('reveal-target', !!target && i === target.position);
+            tr.classList.toggle('reveal-done', !!target && i < target.position);
+        });
+        if (target) {
+            var tr = rows[target.position];
+            if (tr) {
+                var td = tr.querySelectorAll('td.cell')[target.cell];
+                if (td) td.classList.add('next-up');
+                tr.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+        }
+        document.getElementById('reveal-status').textContent = target
+            ? 'Revealing — rank ' + target.rank
+            : 'Reveal complete';
+        document.getElementById('reveal-step').disabled = !target;
+        document.getElementById('reveal-all').disabled = !target;
+        document.getElementById('reveal-undo').disabled = !reveal.history.length;
+    }
+
+    function applyReveal(board, target) {
+        var row = target.row;
+        var cell = row.cells[target.cell];
+        var truth = cell.reveal;
+
+        if (truth) {
+            cell.state = truth.state;
+            cell.wrong = truth.wrong;
+            cell.time = truth.time;
+            cell.penalty = truth.penalty;
+        } else {
+            // Should not happen: a frozen cell always carries its resolution
+            // for admins. Fail closed rather than looping forever on it.
+            cell.state = 'failed';
+            cell.penalty = 0;
+        }
+        cell.pending = 0;
+        delete cell.reveal;
+
+        row.solved = row.cells.filter(function (c) { return c.state === 'solved'; }).length;
+        row.penalty = row.cells.reduce(function (sum, c) {
+            return sum + (c.state === 'solved' ? c.penalty : 0);
+        }, 0);
+        rankRows(board.rows);
+    }
+
+    function stepReveal() {
+        var board = boards()[reveal.boardIndex];
+        var target = nextTarget(board);
+        if (!target) return false;
+        reveal.history.push(clone(board.rows));
+        applyReveal(board, target);
+        renderBoard(reveal.boardIndex, true);
+        snapshot(board);
+        return true;
+    }
+
+    function undoReveal() {
+        if (!reveal.history.length) return;
+        var board = boards()[reveal.boardIndex];
+        board.rows = reveal.history.pop();
+        renderBoard(reveal.boardIndex, true);
+        snapshot(board);
+    }
+
+    function enterReveal() {
+        reveal = { boardIndex: active, history: [] };
+        // The ceremony drives itself; a preview scrolling the board out from
+        // under the presenter would be actively unhelpful.
+        setPreview(false);
+        // The reveal rewrites rows as it goes, and the arrow keys mean
+        // something else now. Not the moment to be editing tags.
+        if (CAN_EDIT_TAGS) setEditing(false);
+        document.getElementById('reveal-bar').classList.add('on');
+        refreshChrome();
+        renderBoard(active, false);
+    }
+
+    function exitReveal() {
+        reveal = null;
+        document.getElementById('reveal-bar').classList.remove('on');
+        refreshChrome();
+        poll();  // pull the real state back down
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Tag editing (staff only)                                            */
+    /* ------------------------------------------------------------------ */
+
+    // Tags are organisation membership, so a change here is a real edit to the
+    // competitor's profile and shows up everywhere on the site, not just on
+    // this board. The server is the authority on what may be touched and by
+    // whom; everything below is convenience on top of that.
+
+    function csrfToken() {
+        var input = document.querySelector('#csrf-holder [name="csrfmiddlewaretoken"]');
+        return input ? input.value : '';
+    }
+
+    function tagModal() {
+        return document.getElementById('tag-modal');
+    }
+
+    function tagModalOpen() {
+        var modal = tagModal();
+        return !!modal && modal.classList.contains('on');
+    }
+
+    // The badges the server will accept, fetched once and kept. This is not
+    // simply payload.badges: an event may name an in-person organisation that
+    // is not also displayed as a badge, and that still needs to be editable.
+    function loadEditable() {
+        if (editable) return Promise.resolve(editable);
+        return fetch(TAGS_URL, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+            .then(function (response) {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.json();
+            })
+            .then(function (data) {
+                editable = data.badges || [];
+                return editable;
+            });
+    }
+
+    function setEditing(on) {
+        editing = !!on;
+        page.classList.toggle('editing', editing);
+
+        var button = document.getElementById('edit-toggle');
+        button.classList.toggle('on', editing);
+        button.setAttribute('aria-pressed', String(editing));
+        button.title = editing
+            ? 'Stop editing competitor tags (E)'
+            : 'Edit competitor tags (E)';
+
+        if (editing) {
+            // A board crawling down the screen is impossible to click.
+            setPreview(false);
+            // Warm the list so the first modal opens filled in rather than
+            // showing a spinner for a request that could have happened already.
+            loadEditable().catch(function () { /* reported when a modal opens */ });
+        } else {
+            closeTagModal();
+        }
+    }
+
+    function rowEditButton(board, row) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'row-edit';
+        button.title = 'Edit tags for ' + (row.display_name || row.username);
+        button.setAttribute('aria-label', button.title);
+        button.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true">' +
+            '<path d="M12.1 1.3l2.6 2.6-1.5 1.5-2.6-2.6zM9.5 3.9l2.6 2.6-7 7L1 15l1.5-4.1z"/></svg>';
+        button.addEventListener('click', function (event) {
+            event.stopPropagation();
+            openTagModal(board, row);
+        });
+        return button;
+    }
+
+    function renderTagOptions(badges, row) {
+        var box = document.getElementById('tag-options');
+        box.innerHTML = '';
+
+        if (!badges.length) {
+            box.innerHTML = '<div id="tag-empty">This event has no badge organisations configured, ' +
+                'so there is nothing to edit. Add some to MCPC_SCOREBOARDS.</div>';
+            document.getElementById('tag-save').disabled = true;
+            return;
+        }
+
+        var have = {};
+        (row.badges || []).forEach(function (key) { have[key] = true; });
+        // An in-person organisation that is not also a badge never appears in
+        // row.badges -- the row carries it as its own flag instead.
+        if (payload.in_person_badge && row.in_person) have[payload.in_person_badge] = true;
+
+        // Remembered so saving can send a delta rather than the whole set, and
+        // so a badge nobody touched here is not written back over a change
+        // another organiser made in the meantime.
+        editTarget.initial = {};
+
+        badges.forEach(function (badge) {
+            var option = document.createElement('label');
+            option.className = 'tag-option';
+
+            var input = document.createElement('input');
+            input.type = 'checkbox';
+            input.value = badge.key;
+            input.checked = !!have[badge.key];
+            editTarget.initial[badge.key] = input.checked;
+            option.appendChild(input);
+
+            var dot = document.createElement('span');
+            dot.className = 'swatch-dot';
+            if (badge.color) dot.style.color = badge.color;
+            option.appendChild(dot);
+
+            var text = document.createElement('span');
+            text.textContent = badge.label;
+            option.appendChild(text);
+
+            if (badge.key === payload.in_person_badge) {
+                var note = document.createElement('span');
+                note.className = 'note';
+                note.textContent = 'Attendance';
+                note.title = 'Drives the In person filter';
+                option.appendChild(note);
+            }
+
+            box.appendChild(option);
+        });
+
+        document.getElementById('tag-save').disabled = false;
+    }
+
+    function openTagModal(board, row) {
+        editTarget = { board: board, row: row, initial: null };
+
+        document.getElementById('tag-title').textContent = row.display_name || row.username;
+        document.getElementById('tag-subtitle').textContent = board.label + ' · ' + row.username;
+        document.getElementById('tag-error').textContent = '';
+        document.getElementById('tag-options').innerHTML = '<div id="tag-empty">Loading…</div>';
+        tagModal().classList.add('on');
+        setSaving(false);
+
+        loadEditable().then(function (badges) {
+            // The modal may have been closed or moved to another competitor
+            // while this was in flight.
+            if (!editTarget || editTarget.row !== row) return;
+            renderTagOptions(badges, row);
+        }).catch(function (error) {
+            if (!editTarget || editTarget.row !== row) return;
+            document.getElementById('tag-options').innerHTML = '';
+            document.getElementById('tag-error').textContent = 'Could not load tags (' + error.message + ')';
+        });
+    }
+
+    function closeTagModal() {
+        var modal = tagModal();
+        if (modal) modal.classList.remove('on');
+        editTarget = null;
+    }
+
+    function setSaving(saving) {
+        var save = document.getElementById('tag-save');
+        save.disabled = saving;
+        save.textContent = saving ? 'Saving…' : 'Save';
+        document.getElementById('tag-cancel').disabled = saving;
+    }
+
+    // Fold the server's answer back into the row in place, so the change is on
+    // screen immediately rather than at the next poll.
+    function applyTagState(board, row, state) {
+        row.badges = state.badges || [];
+        row.in_person = !!state.in_person;
+        if (state.display_name) row.display_name = state.display_name;
+        board.in_person_count = board.rows.filter(function (r) { return r.in_person; }).length;
+
+        var index = boards().indexOf(board);
+        // Flat repaint, no animation: changing attendance can drop the row out
+        // of a filtered view entirely, and sliding it away would read as a rank
+        // change rather than a filter change.
+        if (index >= 0) renderBoard(index, false);
+        refreshChrome();
+        statusLine.textContent = 'Saved tags for ' + (row.display_name || row.username);
+    }
+
+    function saveTags() {
+        // No `initial` means the options never finished loading, so there is
+        // nothing trustworthy to diff against.
+        if (!editTarget || !editTarget.initial) return;
+
+        var board = editTarget.board;
+        var row = editTarget.row;
+        var add = [];
+        var remove = [];
+
+        Array.prototype.forEach.call(
+            document.querySelectorAll('#tag-options input[type="checkbox"]'),
+            function (input) {
+                var was = !!editTarget.initial[input.value];
+                if (input.checked && !was) add.push(input.value);
+                else if (!input.checked && was) remove.push(input.value);
+            },
+        );
+
+        if (!add.length && !remove.length) {
+            closeTagModal();
+            return;
+        }
+
+        setSaving(true);
+        document.getElementById('tag-error').textContent = '';
+
+        fetch(TAGS_URL, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRFToken': csrfToken(),
+            },
+            body: JSON.stringify({ username: row.username, add: add, remove: remove }),
+        })
+            .then(function (response) {
+                return response.json()
+                    .catch(function () { return {}; })
+                    .then(function (data) {
+                        if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+                        return data;
+                    });
+            })
+            .then(function (state) {
+                applyTagState(board, row, state);
+                closeTagModal();
+            })
+            .catch(function (error) {
+                // Stay open with the boxes as the user left them, so a failed
+                // save can be retried without redoing the ticking.
+                setSaving(false);
+                document.getElementById('tag-error').textContent = error.message;
+            });
+    }
+
+{% if debug %}
+    /* ------------------------------------------------------------------ */
+    /* Local test fixtures (DEBUG builds only)                             */
+    /* ------------------------------------------------------------------ */
+
+    // Canned payloads for exercising the live-update path -- cell flashes, FLIP
+    // row moves, first-to-solve recalculation, feed entries settling on a
+    // verdict -- without a judge, a contest or waiting out a poll interval.
+    //
+    //   Shift+0  clear the board and stop the auto-refresh
+    //   Shift+1  load snapshot one
+    //   Shift+2  load snapshot two
+    //
+    // Reload the page to go back to live data.
+    //
+    // Between one and two: six pending submissions land as accepts, four new
+    // submissions arrive inside the freeze, and the top four swap places
+    // (1→4, 2→3, 3→1, 4→2) with a further swap at 6/7. Problem D's
+    // first-to-solve moves to a different team and problem E gains its first.
+    //
+    // One division only, on purpose: the carousel is not what this is testing,
+    // and a single board keeps the diffs between the two snapshots readable.
+
+    var FIXTURE_PENALTY = 20;         // penalty minutes per wrong try
+    var FIXTURE_DURATION = 7200;      // two hours
+    var FIXTURE_FREEZE_AT = 6000;     // minute 100
+    var FIXTURE_BOARD_KEY = 'fixture-div-a';
+    var FIXTURE_LABELS = ['A', 'B', 'C', 'D', 'E', 'F'];
+    var FIXTURE_IN_PERSON = 'fixture-onsite';
+
+    // Fixed at load so the two snapshots agree on what "minute 96" means; a
+    // clock read per build would drift the feed timestamps between them.
+    var FIXTURE_START = Date.now() - 125 * 60000;
+
+    var FIXTURE_BADGES = [
+        { key: FIXTURE_IN_PERSON, label: 'On site', color: '#2f81f7' },
+        { key: 'fixture-firstyear', label: '1st yr', color: '#d4a017' },
+    ];
+
+    // username, display name, in the hall, extra badges
+    var FIXTURE_TEAMS = [
+        ['byteme', 'Byte Me', true, []],
+        ['segfault', 'Segfault Sultans', true, ['fixture-firstyear']],
+        ['nullptr', 'Null Pointers', false, []],
+        ['recursion', 'Recursion Rangers', true, []],
+        ['heap', 'Heap Overflow', true, ['fixture-firstyear']],
+        ['stack', 'Stack Underflow', false, []],
+        ['offbyone', 'Off By One', true, []],
+        ['merge', 'Merge Conflict', false, ['fixture-firstyear']],
+        ['infinite', 'Infinite Loop', true, []],
+    ];
+
+    // One shorthand token per problem:
+    //
+    //   '.'        never attempted
+    //   '41'       solved at minute 41
+    //   '41+2'     solved at minute 41, after 2 wrong tries
+    //   'x3'       3 wrong tries, no accept
+    //   '~1'       1 submission still with the judge
+    //   '?2+1'     1 wrong try, then 2 submissions inside the freeze
+    //   '?1>107'   ...which really resolve to a solve at minute 107
+    //   '?1>x2'    ...or to a failure after 2 tries
+    //
+    // Anything after '>' is the frozen truth, which the server only ships to
+    // admins. It is always present here; the page ignores it unless the reveal
+    // is available, exactly as it would with real data.
+    var FIXTURE_GRIDS = {
+        //             A       B          C       D       E           F
+        one: {
+            byteme:    ['23', '41+1',    '67',   '.',    '?1>107',   '.'],
+            segfault:  ['19', '55',      '72+2', '.',    '~1+2',     '.'],
+            nullptr:   ['31', '48',      '.',    '97+1', '~1',       '.'],
+            recursion: ['27', '52+1',    '88',   '~1',   '.',        '.'],
+            heap:      ['35', '61',      '~1',   'x1',   '?2+1>x3',  '.'],
+            stack:     ['44', '73+2',    '.',    '.',    '.',        '.'],
+            offbyone:  ['58', '~1',      '.',    'x3',   '.',        '.'],
+            merge:     ['62+1', '.',     '.',    '.',    '.',        '.'],
+            infinite:  ['~1', '.',       '.',    'x2',   '.',        '.'],
+        },
+        two: {
+            byteme:    ['23', '41+1',    '67',   '?1>115', '?1>107', '.'],
+            segfault:  ['19', '55',      '72+2', '.',    '79+2',     '.'],
+            nullptr:   ['31', '48',      '.',    '97+1', '95',       '.'],
+            recursion: ['27', '52+1',    '88',   '96',   '?1>x1',    '.'],
+            heap:      ['35', '61',      '90',   'x1',   '?2+1>x3',  '.'],
+            stack:     ['44', '73+2',    '?1>112', '.',  '.',        '.'],
+            offbyone:  ['58', '66',      '.',    'x3',   '.',        '.'],
+            merge:     ['62+1', '?1>x1', '.',    '.',    '.',        '.'],
+            infinite:  ['93', '.',       '.',    'x2',   '.',        '.'],
+        },
+    };
+
+    // id, minute, team, problem, state, verdict. Ids are what let a snapshot-two
+    // entry be recognised as the snapshot-one one having changed, which is what
+    // makes it pulse in place rather than slide in as new.
+    var FIXTURE_FEED_ONE = [
+        [996, 48, 'nullptr', 'B', 'correct', 'Accepted'],
+        [997, 52, 'recursion', 'B', 'correct', 'Accepted'],
+        [998, 55, 'segfault', 'B', 'correct', 'Accepted'],
+        [999, 58, 'offbyone', 'A', 'correct', 'Accepted'],
+        [1000, 61, 'heap', 'B', 'correct', 'Accepted'],
+        [1001, 62, 'merge', 'A', 'correct', 'Accepted'],
+        [1002, 66, 'offbyone', 'B', 'pending', 'Pending'],
+        [1003, 67, 'byteme', 'C', 'correct', 'Accepted'],
+        [1004, 71, 'segfault', 'E', 'incorrect', 'Wrong Answer'],
+        [1005, 72, 'segfault', 'C', 'correct', 'Accepted'],
+        [1006, 73, 'stack', 'B', 'correct', 'Accepted'],
+        [1007, 76, 'segfault', 'E', 'incorrect', 'Wrong Answer'],
+        [1008, 79, 'segfault', 'E', 'pending', 'Pending'],
+        [1009, 84, 'heap', 'E', 'incorrect', 'Wrong Answer'],
+        [1010, 88, 'recursion', 'C', 'correct', 'Accepted'],
+        [1011, 90, 'heap', 'C', 'pending', 'Pending'],
+        [1012, 93, 'infinite', 'A', 'pending', 'Pending'],
+        [1013, 95, 'nullptr', 'E', 'pending', 'Pending'],
+        [1014, 96, 'recursion', 'D', 'pending', 'Pending'],
+        [1015, 97, 'nullptr', 'D', 'correct', 'Accepted'],
+        [1016, 101, 'heap', 'E', 'pending', 'Pending'],
+        [1017, 103, 'heap', 'E', 'pending', 'Pending'],
+        [1018, 107, 'byteme', 'E', 'pending', 'Pending'],
+    ];
+
+    // Verdicts that land between the two snapshots. Each of these has a cell in
+    // FIXTURE_GRIDS.two that turns green at the same time.
+    var FIXTURE_FEED_LANDED = [1002, 1008, 1011, 1012, 1013, 1014];
+
+    // Submissions that arrive between the two snapshots. All inside the freeze,
+    // so they read as pending and masked whatever the judge said.
+    var FIXTURE_FEED_NEW = [
+        [1019, 110, 'merge', 'B', 'pending', 'Pending'],
+        [1020, 112, 'stack', 'C', 'pending', 'Pending'],
+        [1021, 115, 'byteme', 'D', 'pending', 'Pending'],
+        [1022, 118, 'recursion', 'E', 'pending', 'Pending'],
+    ];
+
+    function fixtureSolvedCell(minute, wrong) {
+        return {
+            state: 'solved',
+            wrong: wrong,
+            pending: 0,
+            time: minute * 60,
+            penalty: minute + wrong * FIXTURE_PENALTY,
+        };
+    }
+
+    function fixtureVisibleCell(spec) {
+        var match;
+        if (spec === '.' || spec === '') {
+            return { state: 'empty', wrong: 0, pending: 0, time: null, penalty: 0 };
+        }
+        if ((match = /^(\d+)(?:\+(\d+))?$/.exec(spec))) {
+            return fixtureSolvedCell(+match[1], +(match[2] || 0));
+        }
+        if ((match = /^x(\d+)$/.exec(spec))) {
+            return { state: 'failed', wrong: +match[1], pending: 0, time: null, penalty: 0 };
+        }
+        if ((match = /^([?~])(\d+)(?:\+(\d+))?$/.exec(spec))) {
+            return {
+                state: match[1] === '?' ? 'frozen' : 'judging',
+                wrong: +(match[3] || 0),
+                pending: +match[2],
+                time: null,
+                penalty: 0,
+            };
+        }
+        throw new Error('bad fixture cell "' + spec + '"');
+    }
+
+    function fixtureRevealCell(spec) {
+        var match;
+        if ((match = /^(\d+)(?:\+(\d+))?$/.exec(spec))) {
+            var solved = fixtureSolvedCell(+match[1], +(match[2] || 0));
+            return { state: 'solved', wrong: solved.wrong, time: solved.time, penalty: solved.penalty };
+        }
+        if ((match = /^x(\d+)$/.exec(spec))) {
+            return { state: 'failed', wrong: +match[1], time: null, penalty: 0 };
+        }
+        throw new Error('bad fixture reveal "' + spec + '"');
+    }
+
+    function fixtureCell(spec) {
+        var parts = String(spec).split('>');
+        var cell = fixtureVisibleCell(parts[0]);
+        if (parts.length > 1) cell.reveal = fixtureRevealCell(parts[1]);
+        return cell;
+    }
+
+    function fixtureRows(which) {
+        var grid = FIXTURE_GRIDS[which];
+        var rows = FIXTURE_TEAMS.map(function (team, i) {
+            var cells = grid[team[0]].map(fixtureCell);
+            var badges = team[3].slice();
+            if (team[2]) badges.unshift(FIXTURE_IN_PERSON);
+            return {
+                // Stable across both snapshots: this is the key the FLIP
+                // animation and the per-cell diff are both keyed on, so a row
+                // that changes id would teleport instead of sliding.
+                id: 500 + i,
+                username: team[0],
+                display_name: team[1],
+                badges: badges,
+                in_person: !!team[2],
+                cells: cells,
+                solved: cells.filter(function (c) { return c.state === 'solved'; }).length,
+                penalty: cells.reduce(function (sum, c) {
+                    return sum + (c.state === 'solved' ? c.penalty : 0);
+                }, 0),
+            };
+        });
+        return rankRows(rows);
+    }
+
+    function fixtureFeed(which) {
+        var entries = FIXTURE_FEED_ONE;
+        if (which === 'two') {
+            entries = entries.map(function (entry) {
+                return FIXTURE_FEED_LANDED.indexOf(entry[0]) < 0
+                    ? entry
+                    : [entry[0], entry[1], entry[2], entry[3], 'correct', 'Accepted'];
+            }).concat(FIXTURE_FEED_NEW);
+        }
+
+        var names = {};
+        FIXTURE_TEAMS.forEach(function (team) { names[team[0]] = team[1]; });
+
+        return entries.map(function (entry) {
+            return {
+                id: entry[0],
+                at: new Date(FIXTURE_START + entry[1] * 60000).toISOString(),
+                minute: entry[1],
+                username: entry[2],
+                display_name: names[entry[2]],
+                problem: entry[3],
+                state: entry[4],
+                verdict: entry[5],
+                masked: entry[1] * 60 >= FIXTURE_FREEZE_AT,
+            };
+        });
+    }
+
+    function fixtureBoard(which) {
+        var rows = fixtureRows(which);
+        return {
+            key: FIXTURE_BOARD_KEY,
+            name: 'Fixture Division',
+            label: 'Fixture Division',
+            problems: FIXTURE_LABELS.map(function (label, i) {
+                return {
+                    id: i + 1,
+                    label: label,
+                    code: 'fixture-' + label.toLowerCase(),
+                    name: 'Fixture problem ' + label,
+                    points: 100,
+                };
+            }),
+            rows: rows,
+            events: fixtureFeed(which),
+            freeze_offset: FIXTURE_FREEZE_AT,
+            duration: FIXTURE_DURATION,
+            is_frozen: rows.some(function (row) {
+                return row.cells.some(function (cell) { return cell.state === 'frozen'; });
+            }),
+            has_started: true,
+            has_ended: false,
+            in_person_count: rows.filter(function (row) { return row.in_person; }).length,
+        };
+    }
+
+    // The privilege flags have to keep the server's answer. The reveal bar, the
+    // edit toggle and the attendance button are rendered server-side, so a
+    // fixture claiming a privilege the page was not built with would leave the
+    // chrome reaching for elements that are not in the DOM.
+    function fixturePayload(which) {
+        return {
+            event: payload.event,
+            title: payload.title,
+            boards: which ? [fixtureBoard(which)] : [],
+            can_reveal: CAN_REVEAL,
+            can_edit_tags: CAN_EDIT_TAGS,
+            badges: which ? FIXTURE_BADGES : [],
+            in_person_badge: which && HAS_ROSTER ? FIXTURE_IN_PERSON : null,
+            has_roster: HAS_ROSTER,
+            warnings: ['Local fixture data — not live'],
+            freeze_minutes: 20,
+            poll_seconds: payload.poll_seconds,
+            preview: payload.preview,
+            server_time: new Date().toISOString(),
+        };
+    }
+
+    function applyFixture(which) {
+        // One-way switch: the page stays on canned data until it is reloaded.
+        fixtureMode = true;
+        clearInterval(pollTimer);
+        pollTimer = null;
+        setPreview(false);
+        if (reveal) exitReveal();
+        if (CAN_EDIT_TAGS) setEditing(false);
+
+        payload = fixturePayload(which);
+        rebuildBadges();
+        showWarnings();
+
+        if (!which) {
+            seen = {};
+            feedSeen = {};
+            feedPainted = false;
+            active = 0;
+            buildPanels();
+            track.style.width = '100%';
+            track.style.transform = 'translateX(0)';
+            track.innerHTML = '<div id="empty-state">Fixtures: cleared. Shift+1 and Shift+2 load ' +
+                'the two snapshots; reload the page for live data.</div>';
+            divisionLabel.textContent = 'no data';
+            frozenBadge.classList.add('hidden');
+            renderFeed();
+            statusLine.textContent = 'Fixtures cleared — auto-refresh stopped';
+            return;
+        }
+
+        // Rebuilding the panels would throw away the row positions the FLIP
+        // animation measures against, so only do it when the shape actually
+        // changed -- coming off live data, or off a cleared board.
+        if (track.children.length !== 1 || track.children[0].dataset.key !== FIXTURE_BOARD_KEY) {
+            buildPanels();
+        }
+
+        active = 0;
+        track.style.transform = 'translateX(0)';
+        renderBoard(0, true);
+        snapshot(boards()[0]);
+        refreshChrome();
+        renderFeed();
+        statusLine.textContent = 'Fixture "' + which + '" loaded — auto-refresh stopped';
+    }
+
+{% endif %}
+    /* ------------------------------------------------------------------ */
+    /* Wiring                                                              */
+    /* ------------------------------------------------------------------ */
+
+    document.getElementById('prev').addEventListener('click', function () { goTo(active - 1, true); });
+    document.getElementById('next').addEventListener('click', function () { goTo(active + 1, true); });
+    playButton.addEventListener('click', function () { setPreview(!preview.on); });
+    document.getElementById('feed-toggle').addEventListener('click', function () {
+        setFeedCollapsed(!feedCollapsed());
+    });
+    document.getElementById('feed-close').addEventListener('click', function () {
+        setFeedCollapsed(true);
+    });
+
+    if (HAS_ROSTER) {
+        document.getElementById('attendance').addEventListener('click', function () {
+            setAttendance(attendance === 'all' ? 'in_person' : 'all');
+        });
+    }
+
+    if (CAN_EDIT_TAGS) {
+        document.getElementById('edit-toggle').addEventListener('click', function () {
+            setEditing(!editing);
+        });
+        document.getElementById('tag-cancel').addEventListener('click', closeTagModal);
+        document.getElementById('tag-save').addEventListener('click', saveTags);
+        tagModal().addEventListener('click', function (event) {
+            // Backdrop only: a click that started inside the card should not
+            // throw away half-ticked boxes.
+            if (event.target === this) closeTagModal();
+        });
+    }
+
+    if (CAN_REVEAL) {
+        document.getElementById('reveal-enter').addEventListener('click', enterReveal);
+        document.getElementById('reveal-exit').addEventListener('click', exitReveal);
+        document.getElementById('reveal-step').addEventListener('click', stepReveal);
+        document.getElementById('reveal-undo').addEventListener('click', undoReveal);
+        document.getElementById('reveal-all').addEventListener('click', function () {
+            var board = boards()[reveal.boardIndex];
+            reveal.history.push(clone(board.rows));
+            var target;
+            while ((target = nextTarget(board))) applyReveal(board, target);
+            renderBoard(reveal.boardIndex, true);
+            snapshot(board);
+        });
+    }
+
+    document.addEventListener('keydown', function (event) {
+{% if debug %}
+        // Ahead of everything else, including the modal and reveal handlers, so
+        // Shift+0 is always a way back to a known state. Keyed on `code` rather
+        // than `key`, since shifting a digit produces a punctuation character
+        // that differs by layout.
+        var FIXTURE_KEYS = { Digit0: null, Digit1: 'one', Digit2: 'two' };
+        if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey &&
+            Object.prototype.hasOwnProperty.call(FIXTURE_KEYS, event.code)) {
+            event.preventDefault();
+            if (CAN_EDIT_TAGS) closeTagModal();
+            applyFixture(FIXTURE_KEYS[event.code]);
+            return;
+        }
+{% endif %}
+        // Ahead of the form-field guard below: focus is usually on one of the
+        // modal's own checkboxes, which is an INPUT.
+        if (tagModalOpen()) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeTagModal();
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                saveTags();
+            }
+            return;
+        }
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
+        if (reveal) {
+            if (event.key === ' ' || event.key === 'ArrowRight' || event.key === 'Enter') {
+                event.preventDefault();
+                stepReveal();
+            } else if (event.key === 'ArrowLeft' || event.key === 'Backspace') {
+                event.preventDefault();
+                undoReveal();
+            } else if (event.key === 'Escape') {
+                exitReveal();
+            }
+            return;
+        }
+        if (event.key === 'ArrowRight') goTo(active + 1, true);
+        else if (event.key === 'ArrowLeft') goTo(active - 1, true);
+        else if (event.key === 'p' || event.key === 'P') {
+            setPreview(!preview.on);
+        } else if (event.key === 'f' || event.key === 'F') {
+            setFeedCollapsed(!feedCollapsed());
+        } else if (HAS_ROSTER && (event.key === 'i' || event.key === 'I')) {
+            setAttendance(attendance === 'all' ? 'in_person' : 'all');
+        } else if (CAN_EDIT_TAGS && (event.key === 'e' || event.key === 'E')) {
+            setEditing(!editing);
+        } else if (CAN_REVEAL && (event.key === 'r' || event.key === 'R')) {
+            if (currentBoard() && nextTarget(currentBoard())) enterReveal();
+        }
+    });
+
+    // Keep the carousel honest if the window is resized mid-transition, and
+    // restart the tour, since a resize invalidates the scroll it was part way
+    // through.
+    window.addEventListener('resize', function () {
+        track.style.transform = 'translateX(-' + (active * (100 / boards().length)) + '%)';
+        if (preview.on) previewCycle();
+    });
+
+    var collapsed = true;
+    try {
+        collapsed = localStorage.getItem(FEED_KEY) !== 'open';
+    } catch (error) {
+        // Private browsing or a locked-down kiosk profile: start collapsed.
+    }
+    page.classList.toggle('feed-collapsed', collapsed);
+    document.getElementById('feed-toggle').setAttribute('aria-expanded', String(!collapsed));
+
+    showWarnings();
+    buildPanels();
+    boards().forEach(function (board, i) { renderBoard(i, false); });
+    goTo(0, false);
+    renderFeed();
+    setPreview(false);
+    restartPolling();
+})();
+</script>
+</body>
+</html>

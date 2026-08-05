@@ -15,6 +15,8 @@ from judge.sitemap import sitemaps
 from judge.views import TitledTemplateView, api, blog, comment, contests, language, license, mailgun, organization, \
     preview, problem, problem_manage, ranked_submission, register, stats, status, submission, tasks, ticket, \
     two_factor, user, widgets
+from judge.views.live_scoreboard import LiveScoreboard, live_scoreboard_data
+from judge.views.live_scoreboard_tags import live_scoreboard_tags
 from judge.views.problem_data import ProblemDataView, ProblemSubmissionDiff, \
     problem_data_file, problem_init_view
 from judge.views.register import ActivationView, RegistrationView
@@ -185,6 +187,11 @@ urlpatterns = [
         path('votes/ajax', comment.CommentVotesAjax.as_view(), name='comment_votes_ajax'),
         path('render', comment.CommentContent.as_view(), name='comment_content'),
     ])),
+
+    # Standalone multi-division display scoreboard, configured by MCPC_SCOREBOARDS.
+    path('scoreboard/<str:event>', LiveScoreboard.as_view(), name='live_scoreboard'),
+    path('scoreboard/<str:event>/data', live_scoreboard_data, name='live_scoreboard_data'),
+    path('scoreboard/<str:event>/tags', live_scoreboard_tags, name='live_scoreboard_tags'),
 
     path('contests/', paged_list_view(contests.ContestList, 'contest_list')),
     path('contests.ics', contests.ContestICal.as_view(), name='contest_ical'),
