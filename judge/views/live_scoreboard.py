@@ -34,7 +34,7 @@ from django.views.generic import View
 
 from judge.models import Contest, ContestParticipation, ContestSubmission, Organization
 from judge.models.submission import SUBMISSION_RESULT
-from judge.utils.frozen_scoreboard import CORRECT, FROZEN, PENDING, Attempt, build_scoreboard, classify_event
+from judge.utils.frozen_scoreboard import Attempt, CORRECT, FROZEN, PENDING, build_scoreboard, classify_event
 
 __all__ = ['LiveScoreboard', 'live_scoreboard_data']
 

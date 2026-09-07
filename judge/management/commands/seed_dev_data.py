@@ -43,10 +43,10 @@ from judge.models import (
     SubmissionTestCase,
 )
 
-USER_PREFIX = "user"
-PROBLEM_PREFIX = "devp"
-CONTEST_KEYS = ("devcon1", "devcon2")
-DEFAULT_PASSWORD = "password"
+USER_PREFIX = 'user'
+PROBLEM_PREFIX = 'devp'
+CONTEST_KEYS = ('devcon1', 'devcon2')
+DEFAULT_PASSWORD = 'password'
 
 # Organisations the scoreboard reads: one says who is sitting in the hall, the
 # rest are eligibility categories shown as badges. Membership overlaps, and the
@@ -55,102 +55,102 @@ DEFAULT_PASSWORD = "password"
 # Keep the slugs in step with MCPC_SCOREBOARDS in local_settings.py.
 ORGANIZATIONS = [
     {
-        "slug": "dev-onsite",
-        "name": "Development On-site",
-        "short_name": "On-site",
-        "about": "Seeded development organisation: competitors sitting in the hall.",
-        "share": 0.55,
+        'slug': 'dev-onsite',
+        'name': 'Development On-site',
+        'short_name': 'On-site',
+        'about': 'Seeded development organisation: competitors sitting in the hall.',
+        'share': 0.55,
     },
     {
-        "slug": "dev-beginner",
-        "name": "Development Beginner",
-        "short_name": "Beginner",
-        "about": "Seeded development organisation: beginner division eligibility.",
-        "share": 0.40,
+        'slug': 'dev-beginner',
+        'name': 'Development Beginner',
+        'short_name': 'Beginner',
+        'about': 'Seeded development organisation: beginner division eligibility.',
+        'share': 0.40,
     },
 ]
 
 FIRST_NAMES = [
-    "Ada",
-    "Alan",
-    "Grace",
-    "Linus",
-    "Barbara",
-    "Ken",
-    "Margaret",
-    "Dennis",
-    "Edsger",
-    "Donald",
-    "Radia",
-    "Vint",
-    "Frances",
-    "Tim",
-    "Katherine",
-    "John",
-    "Anita",
-    "Guido",
-    "Jean",
-    "Bjarne",
+    'Ada',
+    'Alan',
+    'Grace',
+    'Linus',
+    'Barbara',
+    'Ken',
+    'Margaret',
+    'Dennis',
+    'Edsger',
+    'Donald',
+    'Radia',
+    'Vint',
+    'Frances',
+    'Tim',
+    'Katherine',
+    'John',
+    'Anita',
+    'Guido',
+    'Jean',
+    'Bjarne',
 ]
 LAST_NAMES = [
-    "Lovelace",
-    "Turing",
-    "Hopper",
-    "Torvalds",
-    "Liskov",
-    "Thompson",
-    "Hamilton",
-    "Ritchie",
-    "Dijkstra",
-    "Knuth",
-    "Perlman",
-    "Cerf",
-    "Allen",
-    "Berners-Lee",
-    "Johnson",
-    "McCarthy",
-    "Borg",
-    "van Rossum",
-    "Sammet",
-    "Stroustrup",
+    'Lovelace',
+    'Turing',
+    'Hopper',
+    'Torvalds',
+    'Liskov',
+    'Thompson',
+    'Hamilton',
+    'Ritchie',
+    'Dijkstra',
+    'Knuth',
+    'Perlman',
+    'Cerf',
+    'Allen',
+    'Berners-Lee',
+    'Johnson',
+    'McCarthy',
+    'Borg',
+    'van Rossum',
+    'Sammet',
+    'Stroustrup',
 ]
 
 # Ordered easiest to hardest -- problem N is the Nth hardest of the whole set.
 PROBLEM_NAMES = [
-    "Coin Rows",
-    "Palindrome Factory",
-    "Grid Escape",
-    "Bracket Repair",
-    "Train Scheduling",
-    "Median Maintenance",
-    "Sparse Forest",
-    "Lexicographic Walk",
-    "Bitmask Buffet",
-    "Prefix Sums Redux",
-    "Meeting Point",
-    "Chromatic Fences",
-    "Modular Staircase",
-    "Convex Delivery",
-    "Rolling Hash Hunt",
-    "Persistent Queries",
+    'Coin Rows',
+    'Palindrome Factory',
+    'Grid Escape',
+    'Bracket Repair',
+    'Train Scheduling',
+    'Median Maintenance',
+    'Sparse Forest',
+    'Lexicographic Walk',
+    'Bitmask Buffet',
+    'Prefix Sums Redux',
+    'Meeting Point',
+    'Chromatic Fences',
+    'Modular Staircase',
+    'Convex Delivery',
+    'Rolling Hash Hunt',
+    'Persistent Queries',
 ]
 
 PROBLEM_BODY = (
-    "This is seeded development data, not a real problem statement.\n\n"
-    "Given an integer $n$ and a sequence $a_1, \\ldots, a_n$, compute the answer.\n\n"
-    "## Input\n\nThe first line contains $n$ ($1 \\le n \\le 10^5$).\n\n"
-    "## Output\n\nA single integer.\n"
+    'This is seeded development data, not a real problem statement.\n\n'
+    'Given an integer $n$ and a sequence $a_1, \\ldots, a_n$, compute the answer.\n\n'
+    '## Input\n\nThe first line contains $n$ ($1 \\le n \\le 10^5$).\n\n'
+    '## Output\n\nA single integer.\n'
 )
 
 # Verdicts for a failed attempt, and their relative weights. Problems are
 # all-or-nothing, so there is no partial-score verdict.
 FAILURE_WEIGHTS = [
-    ("WA", 45),
-    ("TLE", 20),
-    ("RTE", 12),
-    ("MLE", 8),
-    ("IR", 5),
-    ("CE", 10),
+    ('WA', 45),
+    ('TLE', 20),
+    ('RTE', 12),
+    ('MLE', 8),
+    ('IR', 5),
+    ('CE', 10),
 ]
 
 # The tail of the contest that a frozen scoreboard hides. Kept in step with
@@ -170,77 +170,77 @@ FREEZE_FRACTION = 0.2
 LATE_FINISH_CHANCE = 0.25
 
 SOURCE_SNIPPETS = {
-    "PY3": "import sys\n\n\ndef main():\n    data = sys.stdin.read().split()\n    print(len(data))\n\n\nmain()\n",
-    "CPP17": (
-        "#include <bits/stdc++.h>\nusing namespace std;\n\n"
-        "int main() {\n    int n;\n    cin >> n;\n    cout << n << endl;\n}\n"
+    'PY3': 'import sys\n\n\ndef main():\n    data = sys.stdin.read().split()\n    print(len(data))\n\n\nmain()\n',
+    'CPP17': (
+        '#include <bits/stdc++.h>\nusing namespace std;\n\n'
+        'int main() {\n    int n;\n    cin >> n;\n    cout << n << endl;\n}\n'
     ),
-    "JAVA": (
-        "public class Main {\n    public static void main(String[] args) {\n"
+    'JAVA': (
+        'public class Main {\n    public static void main(String[] args) {\n'
         '        System.out.println("seed");\n    }\n}\n'
     ),
 }
-DEFAULT_SOURCE = "// seeded development submission\n"
+DEFAULT_SOURCE = '// seeded development submission\n'
 
 
 class Command(BaseCommand):
-    help = "seeds the database with development fixtures (users, problems, contests, submissions)"
+    help = 'seeds the database with development fixtures (users, problems, contests, submissions)'
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--users",
+            '--users',
             type=int,
             default=40,
-            help="number of users to create (default: 40)",
+            help='number of users to create (default: 40)',
         )
         parser.add_argument(
-            "--problems",
+            '--problems',
             type=int,
             default=16,
-            help="number of problems to create (default: 16)",
+            help='number of problems to create (default: 16)',
         )
         parser.add_argument(
-            "--seed", type=int, default=20260726, help="RNG seed, for reproducible data"
+            '--seed', type=int, default=20260726, help='RNG seed, for reproducible data',
         )
         parser.add_argument(
-            "--password",
+            '--password',
             default=DEFAULT_PASSWORD,
-            help="password given to every seeded user",
+            help='password given to every seeded user',
         )
         parser.add_argument(
-            "--wipe", action="store_true", help="delete previously seeded objects first"
+            '--wipe', action='store_true', help='delete previously seeded objects first',
         )
         parser.add_argument(
-            "--no-admin",
-            action="store_true",
-            help="do not create the `admin` superuser",
+            '--no-admin',
+            action='store_true',
+            help='do not create the `admin` superuser',
         )
         parser.add_argument(
-            "--no-rate", action="store_true", help="skip contest rating calculation"
+            '--no-rate', action='store_true', help='skip contest rating calculation',
         )
 
     @transaction.atomic
     def handle(self, *args, **options):
-        self.rng = random.Random(options["seed"])
-        self.verbosity = options["verbosity"]
+        self.rng = random.Random(options['seed'])
+        self.verbosity = options['verbosity']
 
-        if options["problems"] < 10:
-            raise CommandError("need at least 10 problems to fill a contest")
+        if options['problems'] < 10:
+            raise CommandError('need at least 10 problems to fill a contest')
 
         languages = list(Language.objects.all())
         if not languages:
             raise CommandError(
-                "no languages in the database; run `manage.py loaddata language_small` first"
+                'no languages in the database; run `manage.py loaddata language_small` first',
             )
         self.languages = languages
 
-        if options["wipe"]:
+        if options['wipe']:
             self.wipe()
 
-        admin = None if options["no_admin"] else self.create_admin(options["password"])
-        profiles = self.create_users(options["users"], options["password"])
+        admin = None if options['no_admin'] else self.create_admin(options['password'])
+        profiles = self.create_users(options['users'], options['password'])
         self.create_organizations(profiles)
-        problems = self.create_problems(options["problems"], admin or profiles[0])
+        problems = self.create_problems(options['problems'], admin or profiles[0])
         contests = self.create_contests(problems, admin or profiles[0])
 
         submissions = []
@@ -249,27 +249,27 @@ class Command(BaseCommand):
         submissions += self.create_practice_submissions(problems, profiles)
 
         self.apply_dates(submissions)
-        self.recompute(contests, problems, profiles, rate=not options["no_rate"])
+        self.recompute(contests, problems, profiles, rate=not options['no_rate'])
 
         self.stdout.write(
             self.style.SUCCESS(
-                "Seeded %d users, %d problems, %d contests, %d submissions."
+                'Seeded %d users, %d problems, %d contests, %d submissions.'
                 % (len(profiles), len(problems), len(contests), len(submissions)),
-            )
+            ),
         )
         self.stdout.write(
-            "Log in as any of %s01..%s%02d (password: %s)%s"
+            'Log in as any of %s01..%s%02d (password: %s)%s'
             % (
                 USER_PREFIX,
                 USER_PREFIX,
                 len(profiles),
-                options["password"],
+                options['password'],
                 (
-                    ""
+                    ''
                     if admin is None
-                    else ", or admin/%s for the admin site" % options["password"]
+                    else ', or admin/%s for the admin site' % options['password']
                 ),
-            )
+            ),
         )
 
     # ------------------------------------------------------------------ wipe
@@ -278,22 +278,22 @@ class Command(BaseCommand):
         Contest.objects.filter(key__in=CONTEST_KEYS).delete()
         Problem.objects.filter(code__startswith=PROBLEM_PREFIX).delete()
         User.objects.filter(username__startswith=USER_PREFIX).delete()
-        ProblemGroup.objects.filter(name="dev").delete()
+        ProblemGroup.objects.filter(name='dev').delete()
         Organization.objects.filter(
-            slug__in=[org["slug"] for org in ORGANIZATIONS]
+            slug__in=[org['slug'] for org in ORGANIZATIONS],
         ).delete()
         if self.verbosity:
-            self.stdout.write("Wiped previously seeded objects.")
+            self.stdout.write('Wiped previously seeded objects.')
 
     # ------------------------------------------------------------------ users
 
     def create_admin(self, password):
         user, created = User.objects.get_or_create(
-            username="admin",
+            username='admin',
             defaults={
-                "email": "admin@example.com",
-                "is_staff": True,
-                "is_superuser": True,
+                'email': 'admin@example.com',
+                'is_staff': True,
+                'is_superuser': True,
             },
         )
         if created:
@@ -301,19 +301,19 @@ class Command(BaseCommand):
             user.save()
         profile, _created = Profile.objects.get_or_create(
             user=user,
-            defaults={"language": self.languages[0], "display_rank": "admin"},
+            defaults={'language': self.languages[0], 'display_rank': 'admin'},
         )
         return profile
 
     def create_users(self, count, password):
         profiles = []
         for i in range(1, count + 1):
-            username = "%s%02d" % (USER_PREFIX, i)
+            username = '%s%02d' % (USER_PREFIX, i)
             first = FIRST_NAMES[(i - 1) % len(FIRST_NAMES)]
             last = LAST_NAMES[(i * 7 - 1) % len(LAST_NAMES)]
             user = User(
                 username=username,
-                email="%s@example.com" % username,
+                email='%s@example.com' % username,
                 first_name=first,
                 last_name=last,
                 is_active=True,
@@ -324,16 +324,16 @@ class Command(BaseCommand):
                 Profile.objects.create(
                     user=user,
                     language=self.rng.choice(self.languages),
-                    about="Seeded development user %s." % username,
-                    display_rank="setter" if i <= 3 else "user",
-                    timezone="Australia/Melbourne",
-                    last_access=timezone.now()
-                    - timedelta(days=self.rng.randint(0, 20)),
-                    ip="127.0.0.1",
-                )
+                    about='Seeded development user %s.' % username,
+                    display_rank='setter' if i <= 3 else 'user',
+                    timezone='Australia/Melbourne',
+                    last_access=timezone.now() -
+                    timedelta(days=self.rng.randint(0, 20)),
+                    ip='127.0.0.1',
+                ),
             )
         if self.verbosity:
-            self.stdout.write("Created %d users." % len(profiles))
+            self.stdout.write('Created %d users.' % len(profiles))
         return profiles
 
     # --------------------------------------------------------------- problems
@@ -348,43 +348,43 @@ class Command(BaseCommand):
         organizations = []
         for spec in ORGANIZATIONS:
             organization, _created = Organization.objects.get_or_create(
-                slug=spec["slug"],
+                slug=spec['slug'],
                 defaults={
-                    "name": spec["name"],
-                    "short_name": spec["short_name"],
-                    "about": spec["about"],
-                    "is_open": True,
+                    'name': spec['name'],
+                    'short_name': spec['short_name'],
+                    'about': spec['about'],
+                    'is_open': True,
                 },
             )
-            members = [p for p in profiles if self.rng.random() < spec["share"]]
+            members = [p for p in profiles if self.rng.random() < spec['share']]
             organization.members.set(members)
             organizations.append((organization, len(members)))
 
         if self.verbosity:
             self.stdout.write(
-                "Created %d organizations: %s."
+                'Created %d organizations: %s.'
                 % (
                     len(organizations),
-                    ", ".join(
-                        "%s (%d members)" % (org.slug, count)
+                    ', '.join(
+                        '%s (%d members)' % (org.slug, count)
                         for org, count in organizations
                     ),
-                )
+                ),
             )
         return [org for org, _count in organizations]
 
     def create_problems(self, count, author):
         group, _created = ProblemGroup.objects.get_or_create(
-            name="dev", defaults={"full_name": "Development"}
+            name='dev', defaults={'full_name': 'Development'},
         )
         types = []
         for name, full_name in (
-            ("dp", "Dynamic Programming"),
-            ("graph", "Graph Theory"),
-            ("adhoc", "Ad Hoc"),
+            ('dp', 'Dynamic Programming'),
+            ('graph', 'Graph Theory'),
+            ('adhoc', 'Ad Hoc'),
         ):
             ptype, _created = ProblemType.objects.get_or_create(
-                name=name, defaults={"full_name": full_name}
+                name=name, defaults={'full_name': full_name},
             )
             types.append(ptype)
 
@@ -393,7 +393,7 @@ class Command(BaseCommand):
         for i in range(1, count + 1):
             name = PROBLEM_NAMES[(i - 1) % len(PROBLEM_NAMES)]
             problem = Problem.objects.create(
-                code="%s%02d" % (PROBLEM_PREFIX, i),
+                code='%s%02d' % (PROBLEM_PREFIX, i),
                 name=name,
                 description=PROBLEM_BODY,
                 group=group,
@@ -405,14 +405,14 @@ class Command(BaseCommand):
                 is_public=True,
                 is_manually_managed=True,  # never queued for judging
                 date=published + timedelta(days=i),
-                summary="Seeded development problem %d." % i,
+                summary='Seeded development problem %d.' % i,
             )
             problem.authors.add(author)
             problem.types.set(self.rng.sample(types, self.rng.randint(1, 2)))
             problem.allowed_languages.set(self.languages)
             problems.append(problem)
         if self.verbosity:
-            self.stdout.write("Created %d problems." % len(problems))
+            self.stdout.write('Created %d problems.' % len(problems))
         return problems
 
     # --------------------------------------------------------------- contests
@@ -420,32 +420,32 @@ class Command(BaseCommand):
     def create_contests(self, problems, author):
         # Both divisions run simultaneously over a shared, overlapping problem set.
         start = (timezone.now() - timedelta(days=14)).replace(
-            minute=0, second=0, microsecond=0
+            minute=0, second=0, microsecond=0,
         )
         specs = [
             {
-                "key": CONTEST_KEYS[0],
-                "name": "MCPC Dev Contest Div B",
-                "format_name": "default",
-                "format_config": None,
-                "problems": problems[0:10],
+                'key': CONTEST_KEYS[0],
+                'name': 'MCPC Dev Contest Div B',
+                'format_name': 'default',
+                'format_config': None,
+                'problems': problems[0:10],
             },
             {
-                "key": CONTEST_KEYS[1],
-                "name": "MCPC Dev Contest Div A",
-                "format_name": "icpc",
-                "format_config": {"penalty": 20},
+                'key': CONTEST_KEYS[1],
+                'name': 'MCPC Dev Contest Div A',
+                'format_name': 'icpc',
+                'format_config': {'penalty': 20},
                 # Shares its four easiest problems with the Novice division.
-                "problems": problems[6:16],
+                'problems': problems[6:16],
             },
         ]
 
         contests = []
         for spec in specs:
             contest = Contest.objects.create(
-                key=spec["key"],
-                name=spec["name"],
-                description="Seeded development contest. Five hours, already finished.",
+                key=spec['key'],
+                name=spec['name'],
+                description='Seeded development contest. Five hours, already finished.',
                 start_time=start,
                 end_time=start + timedelta(hours=5),
                 time_limit=None,
@@ -454,14 +454,14 @@ class Command(BaseCommand):
                 rate_all=False,
                 use_clarifications=True,
                 scoreboard_visibility=Contest.SCOREBOARD_VISIBLE,
-                format_name=spec["format_name"],
-                format_config=spec["format_config"],
-                summary="Seeded development contest.",
+                format_name=spec['format_name'],
+                format_config=spec['format_config'],
+                summary='Seeded development contest.',
                 points_precision=2,
             )
             contest.authors.add(author)
             # Problems are listed easiest first, so `order` is difficulty order.
-            for order, problem in enumerate(spec["problems"], start=1):
+            for order, problem in enumerate(spec['problems'], start=1):
                 ContestProblem.objects.create(
                     contest=contest,
                     problem=problem,
@@ -472,8 +472,8 @@ class Command(BaseCommand):
             contests.append(contest)
         if self.verbosity:
             self.stdout.write(
-                "Created %d contests, running %s to %s."
-                % (len(contests), start, start + timedelta(hours=5))
+                'Created %d contests, running %s to %s.'
+                % (len(contests), start, start + timedelta(hours=5)),
             )
         return contests
 
@@ -505,7 +505,7 @@ class Command(BaseCommand):
     def create_contest_activity(self, contest, entrants):
         """Create participations and in-contest submissions for one contest."""
         contest_problems = list(
-            contest.contest_problems.select_related("problem").all()
+            contest.contest_problems.select_related('problem').all(),
         )
         duration = contest.end_time - contest.start_time
 
@@ -546,7 +546,7 @@ class Command(BaseCommand):
         return submissions
 
     def create_attempts(
-        self, participation, contest, contest_problems, skill, duration, start
+        self, participation, contest, contest_problems, skill, duration, start,
     ):
         """One user's run at one contest: solves the easy end, tails off, gives up."""
         submissions = []
@@ -559,7 +559,7 @@ class Command(BaseCommand):
             solved = self.rng.random() < chance
             late = self.rng.random() < self.late_finish_probability(chance)
             for offset, result in self.attempt_timeline(
-                index, count, duration, chance, solved, late
+                index, count, duration, chance, solved, late,
             ):
                 submissions.append(
                     self.build_submission(
@@ -570,7 +570,7 @@ class Command(BaseCommand):
                         contest=contest,
                         contest_problem=contest_problem,
                         participation=participation,
-                    )
+                    ),
                 )
         return submissions
 
@@ -622,8 +622,8 @@ class Command(BaseCommand):
             attempts.append(
                 (
                     timedelta(seconds=when),
-                    "AC" if (final and solved) else self.pick_failure(),
-                )
+                    'AC' if (final and solved) else self.pick_failure(),
+                ),
             )
         return attempts
 
@@ -635,7 +635,7 @@ class Command(BaseCommand):
             upto += weight
             if pick <= upto:
                 return result
-        return "WA"
+        return 'WA'
 
     def create_practice_submissions(self, problems, profiles):
         """Submissions unattached to any contest: before, between and after the contests."""
@@ -646,7 +646,7 @@ class Command(BaseCommand):
             index = self.rng.randrange(len(problems))
             skill = self.rng.betavariate(3, 3)
             solved = self.rng.random() < self.solve_probability(
-                skill, index, len(problems)
+                skill, index, len(problems),
             )
             # Stay inside the window where every problem has already been published.
             when = now - timedelta(
@@ -659,8 +659,8 @@ class Command(BaseCommand):
                     profile=profile,
                     problem=problems[index],
                     when=when,
-                    result="AC" if solved else self.pick_failure(),
-                )
+                    result='AC' if solved else self.pick_failure(),
+                ),
             )
         return submissions
 
@@ -676,15 +676,15 @@ class Command(BaseCommand):
     ):
         language = self.rng.choice(self.languages)
         case_total = float(self.rng.randint(10, 40))
-        accepted = result == "AC"
-        if result == "CE":
+        accepted = result == 'AC'
+        if result == 'CE':
             case_points = 0.0
-            status = "CE"
+            status = 'CE'
             time = None
             memory = None
         else:
             case_points = case_total if accepted else 0.0
-            status = "D"
+            status = 'D'
             time = round(self.rng.uniform(0.01, problem.time_limit), 3)
             memory = float(self.rng.randint(2048, problem.memory_limit))
 
@@ -703,7 +703,7 @@ class Command(BaseCommand):
             batch=False,
             judged_date=when + timedelta(seconds=self.rng.randint(1, 20)),
             contest_object=contest,
-            error="error: seeded compile failure\n" if result == "CE" else None,
+            error='error: seeded compile failure\n' if result == 'CE' else None,
         )
         SubmissionSource.objects.create(
             submission=submission,
@@ -721,7 +721,7 @@ class Command(BaseCommand):
 
     def build_test_cases(self, submission, result, case_total, accepted, time, memory):
         """A handful of test cases so the submission detail page has something to show."""
-        if result == "CE":
+        if result == 'CE':
             return
         cases = min(int(case_total), 8)
         if not cases:
@@ -736,7 +736,7 @@ class Command(BaseCommand):
                 SubmissionTestCase(
                     submission=submission,
                     case=case,
-                    status=result if failed else "AC",
+                    status=result if failed else 'AC',
                     time=(
                         None
                         if time is None
@@ -746,8 +746,8 @@ class Command(BaseCommand):
                     points=0.0 if failed_case is not None else round(per_case, 2),
                     total=round(per_case, 2),
                     batch=None,
-                    feedback="seeded feedback" if failed else "",
-                )
+                    feedback='seeded feedback' if failed else '',
+                ),
             )
         SubmissionTestCase.objects.bulk_create(objects)
 
@@ -757,9 +757,9 @@ class Command(BaseCommand):
         for submission, when in submissions:
             submission.date = when
             objects.append(submission)
-        Submission.objects.bulk_update(objects, ["date"], batch_size=200)
+        Submission.objects.bulk_update(objects, ['date'], batch_size=200)
         if self.verbosity:
-            self.stdout.write("Created %d submissions." % len(objects))
+            self.stdout.write('Created %d submissions.' % len(objects))
 
     # ------------------------------------------------------------ recomputing
 
@@ -779,6 +779,6 @@ class Command(BaseCommand):
                 rate_contest(contest)
         if self.verbosity:
             self.stdout.write(
-                "Recomputed scoreboards, problem stats, user points%s."
-                % (" and ratings" if rate else "")
+                'Recomputed scoreboards, problem stats, user points%s.'
+                % (' and ratings' if rate else ''),
             )
