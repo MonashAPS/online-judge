@@ -1,6 +1,6 @@
 {
-  "name": "DMOJ",
-  "short_name": "DMOJ",
+  "name": "MonashAPS Judge",
+  "short_name": "MAPS Judge",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
