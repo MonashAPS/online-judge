@@ -1,7 +1,8 @@
+import datetime
 import json
 from calendar import Calendar, SUNDAY
 from collections import defaultdict, namedtuple
-from datetime import date, datetime, time, timedelta
+from datetime import date, time, timedelta
 from functools import partial
 from itertools import chain
 from operator import attrgetter, itemgetter
@@ -23,8 +24,8 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.utils.timezone import make_aware
 from django.utils.translation import gettext as _, gettext_lazy
-from django.views.generic import ListView, TemplateView
-from django.views.generic.detail import DetailView, SingleObjectMixin, View
+from django.views.generic import ListView, TemplateView, View
+from django.views.generic.detail import DetailView, SingleObjectMixin
 from django.views.generic.list import BaseListView
 from icalendar import Calendar as ICalendar, Event
 from reversion import revisions
@@ -95,15 +96,21 @@ class ContestList(QueryStringSortMixin, DiggPaginatorMixin, TitleMixin, ContestL
             return queryset
 
         return queryset.annotate(
-            editor_or_tester=Exists(Contest.authors.through.objects.filter(contest=OuterRef('pk'), profile=profile))
-            .bitor(Exists(Contest.curators.through.objects.filter(contest=OuterRef('pk'), profile=profile)))
-            .bitor(Exists(Contest.testers.through.objects.filter(contest=OuterRef('pk'), profile=profile))),
+            editor_or_tester=Exists(Contest.authors.through.objects.filter(contest=OuterRef('pk'), profile=profile)) |
+            Exists(Contest.curators.through.objects.filter(contest=OuterRef('pk'), profile=profile)) |
+            Exists(Contest.testers.through.objects.filter(contest=OuterRef('pk'), profile=profile)),
             completed_contest=Exists(ContestParticipation.objects.filter(contest=OuterRef('pk'), user=profile,
                                                                          virtual=ContestParticipation.LIVE)),
         )
 
     def get_queryset(self):
-        return self._get_queryset().order_by(self.order, 'key').filter(end_time__lt=self._now)
+        self.search_query = None
+        queryset = self._get_queryset().order_by(self.order, 'key').filter(end_time__lt=self._now)
+        if 'search' in self.request.GET:
+            self.search_query = search_query = ' '.join(self.request.GET.getlist('search')).strip()
+            if search_query:
+                queryset = queryset.filter(Q(key__icontains=search_query) | Q(name__icontains=search_query))
+        return queryset
 
     def get_paginator(self, queryset, per_page, orphans=0, allow_empty_first_page=True, **kwargs):
         return super().get_paginator(queryset, per_page, orphans, allow_empty_first_page,
@@ -142,6 +149,7 @@ class ContestList(QueryStringSortMixin, DiggPaginatorMixin, TitleMixin, ContestL
         context['now'] = self._now
         context['first_page_href'] = '.'
         context['page_suffix'] = '#past-contests'
+        context['search_query'] = self.search_query
         context.update(self.get_sort_context())
         context.update(self.get_sort_paginate_context())
         return context
@@ -283,8 +291,16 @@ class ContestDetail(ContestMixin, TitleMixin, CommentedDetailView):
         context['metadata'].update(
             **self.object.contest_problems
             .annotate(
-                partials_enabled=F('partial').bitand(F('problem__partial')),
-                pretests_enabled=F('is_pretested').bitand(F('contest__run_pretests_only')),
+                partials_enabled=Case(
+                    When(partial=True, problem__partial=True, then=Value(True)),
+                    default=Value(False),
+                    output_field=BooleanField(),
+                ),
+                pretests_enabled=Case(
+                    When(is_pretested=True, contest__run_pretests_only=True, then=Value(True)),
+                    default=Value(False),
+                    output_field=BooleanField(),
+                ),
             )
             .aggregate(
                 has_partials=Sum('partials_enabled'),
@@ -293,6 +309,8 @@ class ContestDetail(ContestMixin, TitleMixin, CommentedDetailView):
                 problem_count=Count('id'),
             ),
         )
+        context['enable_comments'] = settings.DMOJ_ENABLE_COMMENTS
+        context['enable_social'] = settings.DMOJ_ENABLE_SOCIAL
         return context
 
 
@@ -497,8 +515,8 @@ class ContestCalendar(TitleMixin, ContestListMixin, TemplateView):
 
     def get_table(self):
         calendar = Calendar(self.firstweekday).monthdatescalendar(self.year, self.month)
-        starts, ends, oneday = self.get_contest_data(make_aware(datetime.combine(calendar[0][0], time.min)),
-                                                     make_aware(datetime.combine(calendar[-1][-1], time.min)))
+        starts, ends, oneday = self.get_contest_data(make_aware(datetime.datetime.combine(calendar[0][0], time.min)),
+                                                     make_aware(datetime.datetime.combine(calendar[-1][-1], time.min)))
         return [[ContestDay(
             date=date, is_pad=date.month != self.month,
             is_today=date == self.today, starts=starts[date], ends=ends[date], oneday=oneday[date],
@@ -549,15 +567,15 @@ class ContestICal(TitleMixin, ContestListMixin, BaseListView):
         cal.add('prodid', '-//DMOJ//NONSGML Contests Calendar//')
         cal.add('version', '2.0')
 
-        now = timezone.now().astimezone(timezone.utc)
+        now = timezone.now().astimezone(datetime.timezone.utc)
         domain = self.request.get_host()
         for contest in self.get_queryset():
             event = Event()
             event.add('uid', f'contest-{contest.key}@{domain}')
             event.add('summary', contest.name)
             event.add('location', self.request.build_absolute_uri(contest.get_absolute_url()))
-            event.add('dtstart', contest.start_time.astimezone(timezone.utc))
-            event.add('dtend', contest.end_time.astimezone(timezone.utc))
+            event.add('dtstart', contest.start_time.astimezone(datetime.timezone.utc))
+            event.add('dtend', contest.end_time.astimezone(datetime.timezone.utc))
             event.add('dtstamp', now)
             cal.add_component(event)
         return cal.to_ical()
@@ -677,7 +695,8 @@ def base_contest_ranking_list(contest, problems, queryset):
 def contest_ranking_list(contest, problems):
     return base_contest_ranking_list(contest, problems, contest.users.filter(virtual=0)
                                      .prefetch_related('user__organizations')
-                                     .order_by('is_disqualified', '-score', 'cumtime', 'tiebreaker'))
+                                     .annotate(submission_cnt=Count('submission'))
+                                     .order_by('is_disqualified', '-score', 'cumtime', 'tiebreaker', '-submission_cnt'))
 
 
 def get_contest_ranking_list(request, contest, participation=None, ranking_list=contest_ranking_list,

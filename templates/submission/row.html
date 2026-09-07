@@ -35,6 +35,9 @@
                     <i title="{{ submission.contest_object.name }}" class="fa fa-dot-circle-o"></i>
                 </a>
             {% endif %}
+            {% if submission.is_archived %}
+                <i class="fa fa-archive"></i>
+            {% endif %}
         </div>
     </div>
 
@@ -87,7 +90,6 @@
         {% else %}
             <div class="time">---</div>
         {% endif %}
-        {# No one actually likes IEC prefixes, Jinja2. #}
-        <div class="memory">{{ (submission.memory_bytes|filesizeformat(True)).replace('i', '') }}</div>
+        <div class="memory">{{ submission.memory|kbdetailformat }}</div>
     {% endif %}
 </div>

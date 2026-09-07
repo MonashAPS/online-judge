@@ -1,4 +1,4 @@
-<div class="comment-submit">
+<div class="comment-submit comment-edit-form">
     <form id="comment-edit" action="{{ request.get_full_path() }}" method="post">
         <span style="display: none" class="comment-id">{{ comment.id }}</span>
         <span style="display: none" class="read-back">{{ url('comment_content', comment.id) }}</span>
@@ -9,9 +9,7 @@
                 {{ form.body.errors }}
             </div>
         {% endif %}
-        <div class="comment-post-wrapper">
-            <div id="comment-form-body">{{ form.body }}</div>
-        </div>
+        <div id="comment-form-body">{{ form.body }}</div>
         <hr>
         <input style="float: right" type="submit" value="{{ _('Post!') }}" class="button">
     </form>

@@ -9,8 +9,8 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from .caching import finished_submission
-from .models import BlogPost, Comment, Contest, ContestSubmission, EFFECTIVE_MATH_ENGINES, Judge, Language, License, \
-    MiscConfig, Organization, Problem, Profile, Submission, WebAuthnCredential
+from .models import BlogPost, Comment, Contest, ContestProblem, ContestSubmission, EFFECTIVE_MATH_ENGINES, Judge, \
+    Language, License, MiscConfig, Organization, Problem, Profile, Submission, WebAuthnCredential
 
 
 def get_pdf_path(basename: str) -> Optional[str]:
@@ -79,6 +79,13 @@ def contest_update(sender, instance, **kwargs):
                        for engine in EFFECTIVE_MATH_ENGINES])
 
 
+@receiver(post_delete, sender=ContestProblem)
+def contest_problem_delete(sender, instance, **kwargs):
+    # `contest_object` is the `Contest` object indirectly associated with the `Submission` object
+    # `contest` is the `ContestSubmission` object associated with the `Submission` object
+    Submission.objects.filter(contest_object=instance.contest, contest__isnull=True).update(contest_object=None)
+
+
 @receiver(post_save, sender=License)
 def license_update(sender, instance, **kwargs):
     cache.delete(make_template_fragment_key('license_html', (instance.id,)))
@@ -118,6 +125,16 @@ def submission_delete(sender, instance, **kwargs):
     instance.user.calculate_points()
     instance.problem._updating_stats_only = True
     instance.problem.update_stats()
+
+
+@receiver(post_save, sender=Submission)
+def submission_update(sender, instance, update_fields, **kwargs):
+    if update_fields and 'is_archived' in update_fields:
+        finished_submission(instance)
+        instance.user._updating_stats_only = True
+        instance.user.calculate_points()
+        instance.problem._updating_stats_only = True
+        instance.problem.update_stats()
 
 
 @receiver(post_delete, sender=ContestSubmission)

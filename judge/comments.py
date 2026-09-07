@@ -20,7 +20,7 @@ from reversion.models import Revision, Version
 
 from judge.dblock import LockModel
 from judge.models import Comment, CommentLock
-from judge.widgets import HeavyPreviewPageDownWidget
+from judge.widgets import MartorWidget
 
 
 class CommentForm(ModelForm):
@@ -31,14 +31,15 @@ class CommentForm(ModelForm):
             'parent': forms.HiddenInput(),
         }
 
-        if HeavyPreviewPageDownWidget is not None:
-            widgets['body'] = HeavyPreviewPageDownWidget(preview=reverse_lazy('comment_preview'),
-                                                         preview_timeout=1000, hide_preview_button=True)
+        widgets['body'] = MartorWidget(
+            editor_msg=_('Please click on "Preview" before posting your comment.'),
+            button_text=_('Post!'),
+            attrs={'data-markdownfy-url': reverse_lazy('comment_preview')},
+        )
 
     def __init__(self, request, *args, **kwargs):
         self.request = request
         super(CommentForm, self).__init__(*args, **kwargs)
-        self.fields['body'].widget.attrs.update({'placeholder': _('Comment body')})
 
     def clean(self):
         if self.request is not None and self.request.user.is_authenticated:

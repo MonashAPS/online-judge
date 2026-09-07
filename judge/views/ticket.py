@@ -22,11 +22,13 @@ from judge.utils.diggpaginator import DiggPaginator
 from judge.utils.tickets import filter_visible_tickets, own_ticket_filter
 from judge.utils.views import SingleObjectFormView, TitleMixin, paginate_query_context
 from judge.views.problem import ProblemMixin
-from judge.widgets import HeavyPreviewPageDownWidget
+from judge.widgets import MartorWidget
 
-ticket_widget = (forms.Textarea() if HeavyPreviewPageDownWidget is None else
-                 HeavyPreviewPageDownWidget(preview=reverse_lazy('ticket_preview'),
-                                            preview_timeout=1000, hide_preview_button=True))
+ticket_widget = MartorWidget(
+    editor_msg=_('Please click on "Preview" before creating your ticket.'),
+    button_text=_('Create'),
+    attrs={'data-markdownfy-url': reverse_lazy('ticket_preview')})
+ticket_comment_widget = MartorWidget(attrs={'data-markdownfy-url': reverse_lazy('ticket_preview')})
 
 
 class TicketForm(forms.Form):
@@ -37,7 +39,6 @@ class TicketForm(forms.Form):
         self.request = request
         super(TicketForm, self).__init__(*args, **kwargs)
         self.fields['title'].widget.attrs.update({'placeholder': _('Ticket title')})
-        self.fields['body'].widget.attrs.update({'placeholder': _('Issue description')})
 
     def clean(self):
         if self.request is not None and self.request.user.is_authenticated:
@@ -102,7 +103,7 @@ class NewProblemTicketView(ProblemMixin, TitleMixin, NewTicketView):
 
 
 class TicketCommentForm(forms.Form):
-    body = forms.CharField(widget=ticket_widget)
+    body = forms.CharField(widget=ticket_comment_widget)
 
 
 class TicketMixin(LoginRequiredMixin):

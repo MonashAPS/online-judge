@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="https://avatars2.githubusercontent.com/u/6934864?v=3&s=1000" width="120px">
+  <img src="https://github.com/DMOJ/online-judge/blob/master/logo.png?raw=true" width="120px">
   <br>
   DMOJ: Modern Online Judge
 </h1>
@@ -21,7 +21,7 @@ See it live at [dmoj.ca](https://dmoj.ca/)!
 
 ## Features
 
-* [Support for over **60 language runtimes**](https://github.com/DMOJ/online-judge#supported-languages)
+* [Support for over **60 language runtimes**](https://github.com/DMOJ/judge-server#supported-platforms-and-runtimes)
 * Highly robust judging system:
    * Supports **interactive** and **signature-graded** tasks
    * Supports **runtime data generators** and **custom output validators**
@@ -91,56 +91,19 @@ Use the site in whatever language you're most comfortable in &mdash; visit [tran
 ### Highly featured administration interface
 The DMOJ admin interface is highly versatile, and can be efficiently used for anything from managing users to authoring problem statements.
 
-![](https://dmoj.ml/data/_other/readme/problem-admin.png)
+![](https://static.dmoj.ca/data/_other/readme/problem-admin.png)
 
-![](https://dmoj.ml/data/_other/readme/admin-dashboard.png)
+![](https://static.dmoj.ca/data/_other/readme/admin-dashboard.png)
 
 ## Supported languages
 
-Check out [**DMOJ/judge-server**](https://github.com/DMOJ/judge-server) for more judging backend details.
+Check out [**DMOJ/judge-server**](https://github.com/DMOJ/judge-server) for all 60+ supported languages and more judging backend details.
 
 Supported languages include:
-* C++ 11/14/17/20 (GCC and Clang)
-* C 99/11
-* Java 8-19
+* C++ 11/14/17/20/23 (GCC and Clang)
+* C 99/11/23
+* Java 8/25
 * Python 2/3
 * PyPy 2/3
 * Pascal
 * Mono C#/F#/VB
-
-The judge can also grade in the languages listed below:
-* Ada
-* AWK
-* COBOL
-* D
-* Dart
-* Fortran
-* Forth
-* Go
-* Groovy
-* GAS x86/x64/ARM
-* Haskell
-* INTERCAL
-* Kotlin
-* Lua
-* LLVM IR
-* NASM x86/x64
-* Objective-C
-* OCaml
-* Perl
-* PHP
-* Pike
-* Prolog
-* Racket
-* Ruby
-* Rust
-* Scala
-* Chicken Scheme
-* sed
-* Steel Bank Common Lisp
-* Swift
-* Tcl
-* Turing
-* V8 JavaScript
-* Brain\*\*\*\*
-* Zig

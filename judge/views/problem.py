@@ -127,6 +127,7 @@ class ProblemSolution(SolvedProblemMixin, ProblemMixin, TitleMixin, CommentedDet
             raise Http404()
         context['solution'] = solution
         context['has_solved_problem'] = self.object.id in self.get_completed_problems()
+        context['enable_comments'] = settings.DMOJ_ENABLE_COMMENTS
         return context
 
     def get_comment_page(self):
@@ -201,6 +202,7 @@ class ProblemDetail(ProblemMixin, SolvedProblemMixin, CommentedDetailView):
                                           context['description'], 'problem')
         context['meta_description'] = self.object.summary or metadata[0]
         context['og_image'] = self.object.og_image or metadata[1]
+        context['enable_comments'] = settings.DMOJ_ENABLE_COMMENTS
 
         context['vote_perm'] = self.object.vote_permission_for_user(user)
         if context['vote_perm'].can_vote():
@@ -315,7 +317,7 @@ class ProblemPdfView(ProblemMixin, SingleObjectMixin, View):
                 except ProblemTranslation.DoesNotExist:
                     trans = None
 
-                problem_name = trans.problem_name if trans else problem.name
+                problem_name = trans.name if trans else problem.name
                 return render_pdf(
                     html=get_template('problem/raw.html').render({
                         'problem': problem,
@@ -447,8 +449,10 @@ class ProblemList(QueryStringSortMixin, TitleMixin, SolvedProblemMixin, ListView
             filter = Problem.q_add_author_curator_tester(filter, self.profile)
         queryset = Problem.objects.filter(filter).select_related('group').defer('description', 'summary')
         if self.profile is not None and self.hide_solved:
-            queryset = queryset.exclude(id__in=Submission.objects.filter(user=self.profile, points=F('problem__points'))
-                                        .values_list('problem__id', flat=True))
+            queryset = queryset.exclude(id__in=Submission.objects
+                                        .filter(user=self.profile, is_archived=False,
+                                                result='AC', case_points__gte=F('case_total'))
+                                        .values_list('problem_id', flat=True))
         if self.show_types:
             queryset = queryset.prefetch_related('types')
         queryset = queryset.annotate(has_public_editorial=Case(
@@ -692,12 +696,16 @@ class ProblemSubmit(LoginRequiredMixin, ProblemMixin, TitleMixin, SingleObjectFo
         return reverse('submission_status', args=(self.new_submission.id,))
 
     def form_valid(self, form):
-        if (
-            not self.request.user.has_perm('judge.spam_submission') and
-            Submission.objects.filter(user=self.request.profile, rejudged_date__isnull=True)
-                              .exclude(status__in=['D', 'IE', 'CE', 'AB']).count() >= settings.DMOJ_SUBMISSION_LIMIT
-        ):
-            return HttpResponse(format_html('<h1>{0}</h1>', _('You submitted too many submissions.')), status=429)
+        if not self.request.user.has_perm('judge.spam_submission'):
+            if (
+                Submission.objects.filter(user=self.request.profile, rejudged_date__isnull=True)
+                    .exclude(status__in=['D', 'IE', 'CE', 'AB']).count() >= settings.DMOJ_SUBMISSION_LIMIT
+            ) or (
+                Submission.objects.filter(user=self.request.profile,
+                                          date__gte=timezone.now() - settings.DMOJ_SUBMISSION_RATELIMIT_TIMEFRAME)
+                    .exclude(status__in=['IE', 'CE']).count() >= settings.DMOJ_SUBMISSION_RATELIMIT
+            ):
+                return HttpResponse(format_html('<h1>{0}</h1>', _('You submitted too many submissions.')), status=429)
         if not self.object.allowed_languages.filter(id=form.cleaned_data['language'].id).exists():
             raise PermissionDenied()
         if not self.request.user.is_superuser and self.object.banned_users.filter(id=self.request.profile.id).exists():
