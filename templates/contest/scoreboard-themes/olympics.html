@@ -20,14 +20,6 @@
    on -- repeated here because CSS cannot read it back out of the file. Change
    one and change the other, or the header will not match its own icon.
 
-   Every sport below is drawn, and each colour here was read back out of that
-   sport's own SVG. The event palette, for sports still to come:
-
-     #4BEF77
-
-   Two of the drawn sports sit a little off that palette -- fencing (#4AFA44)
-   and pentathlon (#39BD5C) -- because the artwork was drawn that way, and the
-   file is what the header has to match.
 --------------------------------------------------------------------------- #}
 {% set sports = {
     'archery':             '#8338EC',
@@ -56,10 +48,6 @@
    with no matching SVG is the one mistake that is loud: the page will raise on
    the missing static file rather than render a blank column, so add the file
    (and run `./scripts/copy_static`) in the same breath as the entry.
-
-   No two sports share a colour, but fencing (#4AFA44) and pentathlon (#39BD5C)
-   are both greens and are hard to tell apart at header size, so keep those two
-   out of the same division, or it grows two blocks that look alike.
 --------------------------------------------------------------------------- #}
 {% set problem_icons = {
     'devcon1': {
