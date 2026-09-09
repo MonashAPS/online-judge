@@ -20,13 +20,17 @@ def localtime_wrapper(func):
     return wrapper
 
 
-registry.filter(localtime_wrapper(date))
+local_date = localtime_wrapper(date)
+registry.filter(local_date)
 registry.filter(localtime_wrapper(time))
 
 
 @registry.function
 def relative_time(time, **kwargs):
-    abs_time = date(time, kwargs.get('format', _('N j, Y, g:i a')))
+    # Format in the viewer's timezone, as the date filter does; the bare
+    # defaultfilters.date keeps an aware datetime in its own tzinfo, which is
+    # UTC straight from the database.
+    abs_time = local_date(time, kwargs.get('format', _('N j, Y, g:i a')))
     return mark_safe(f'<span data-iso="{time.astimezone(timezone.utc).isoformat()}" class="time-with-rel"'
                      f' title="{escape(abs_time)}" data-format="{escape(kwargs.get("rel", _("{time}")))}">'
                      f'{escape(kwargs.get("abs", _("on {time}")).replace("{time}", abs_time))}</span>')
