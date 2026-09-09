@@ -20,15 +20,62 @@ Two things here deliberately differ from the stock contest ranking page:
    Treat the URL as public the moment the event is configured.
 2. It freezes the final hour ICPC-style and only ships the frozen results to
    admins, so the reveal cannot be spoiled by reading the network tab.
+
+Per-event theming
+-----------------
+
+An event can be dressed up without forking the page. Two hooks, either or both:
+
+    'mcpc2026': {
+        ...
+        'theme': 'olympics',                           # styling on top
+        'template': 'contest/live-scoreboard.html',    # a different page
+    },
+
+``theme`` names a template in ``templates/contest/scoreboard-themes/``, pulled
+into the page's ``<head>`` *after* the built-in styles, so anything it declares
+wins: override the ``:root`` custom properties for a recolour, or write rules
+against the hooks the board exposes (``body.theme-<key>``, ``<html
+data-theme>``, ``tr.rank-1|2|3``, ``tr[data-rank]``, ``tr[data-position]``).
+Themes are templates rather than static files, so a change is live on a site
+restart with no ``collectstatic``.
+
+``template`` swaps the page itself, for a theme that needs different markup. It
+is nearly always better to extend the default one and override only the blocks
+that need to change::
+
+    {% extends "contest/live-scoreboard.html" %}
+    {% block body_start %}<div id="rings"></div>{% endblock %}
+
+A theme whose template is missing is dropped rather than fatal: the board falls
+back to the default styling and tells admins in the footer, the same way a
+mistyped badge slug does.
+
+Flags
+-----
+
+An event can give every competitor a small flag beside their name::
+
+    'flags': '/media/flags/{username}.png',
+
+The pattern is formatted per competitor and handed to the page as a URL. It is
+never checked: a competitor with no image simply has no flag, because the page
+drops an image that fails to load rather than showing a broken one. That is the
+whole mechanism -- where the files come from, and who is allowed to change
+them, is a question for whatever serves that URL.
 """
 
 import json
 import logging
+import re
+from urllib.parse import quote
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.http import Http404, JsonResponse
 from django.shortcuts import render
+from django.template import TemplateDoesNotExist
+from django.template.loader import get_template
 from django.utils import timezone
 from django.views.generic import View
 
@@ -42,6 +89,13 @@ logger = logging.getLogger('judge.scoreboard')
 
 DEFAULT_FREEZE_MINUTES = 60
 DEFAULT_PENALTY_MINUTES = 20
+
+# Where a theme's template is looked up, by its key.
+THEME_TEMPLATE = 'contest/scoreboard-themes/%s.html'
+
+# A theme key names a file on disk, so keep it to something that cannot climb
+# out of the theme directory.
+THEME_KEY = re.compile(r'^[a-z0-9][a-z0-9_-]*$')
 
 # How many recent submissions the event feed carries per division. The feed is
 # a sidebar on a hall display, not an audit log, so this is deliberately small
@@ -105,6 +159,25 @@ def get_event_config(event_key):
     if not contests:
         raise Http404('No contests listed for scoreboard "%s".' % event_key)
 
+    # Both fall back to a site-wide default, and both take an explicit None to
+    # opt one event out of it.
+    theme = raw.get('theme', getattr(settings, 'MCPC_SCOREBOARD_THEME', None)) or None
+    template = raw.get('template', getattr(settings, 'MCPC_SCOREBOARD_TEMPLATE', None)) or None
+    if theme is not None and not THEME_KEY.match(theme):
+        raise ImproperlyConfigured(
+            'MCPC_SCOREBOARDS theme keys name a file in %s: use lowercase letters, digits, '
+            '"-" and "_" only; got %r.' % (THEME_TEMPLATE % '<key>', theme),
+        )
+
+    flags = raw.get('flags', getattr(settings, 'MCPC_SCOREBOARD_FLAGS', None)) or None
+    if flags is not None:
+        try:
+            flags.format(username='probe')
+        except (KeyError, IndexError) as e:
+            raise ImproperlyConfigured(
+                'MCPC_SCOREBOARDS flag patterns take {username} and nothing else; %r has %s.' % (flags, e),
+            )
+
     return {
         'key': event_key,
         'title': raw.get('title') or event_key,
@@ -112,6 +185,9 @@ def get_event_config(event_key):
         'labels': raw.get('labels') or {},
         'badges': _normalise_badges(raw.get('badges')),
         'in_person_organization': raw.get('in_person_organization'),
+        'theme': theme,
+        'template': template,
+        'flags': flags,
         'freeze_minutes': raw.get(
             'freeze_minutes',
             getattr(settings, 'MCPC_SCOREBOARD_FREEZE_MINUTES', DEFAULT_FREEZE_MINUTES),
@@ -192,6 +268,40 @@ def resolve_badges(config):
                         % config['in_person_organization'])
 
     return definitions, in_person_org.slug if in_person_org else None, warnings
+
+
+def resolve_theme(config):
+    """Find this event's theme template, if it has one.
+
+    Returns ``(key, template_name, warnings)``. A theme whose template does not
+    exist is dropped rather than fatal -- same reasoning as a mistyped badge
+    slug -- and reported to admins in the page footer, so the board still comes
+    up in its default clothes.
+    """
+    theme = config['theme']
+    if not theme:
+        return None, None, []
+
+    name = THEME_TEMPLATE % theme
+    try:
+        get_template(name)
+    except TemplateDoesNotExist:
+        message = 'No theme template at "%s"; using the default styling.' % name
+        logger.warning('Scoreboard "%s": %s', config['key'], message)
+        return None, None, [message]
+
+    return theme, name, []
+
+
+def flag_url(pattern, username):
+    """This competitor's flag, or None when the event has no flag pattern.
+
+    The username is escaped because it lands in a URL, not because anything
+    here trusts it less than the rest of the page does.
+    """
+    if not pattern:
+        return None
+    return pattern.format(username=quote(username, safe=''))
 
 
 def can_reveal(user, contests):
@@ -301,10 +411,11 @@ def build_events(contest, labels, max_points, freeze_offset, limit):
 
 
 def build_contest_payload(contest, freeze_minutes, include_reveal, badge_keys=(), in_person_key=None,
-                          feed_limit=DEFAULT_FEED_LIMIT):
+                          feed_limit=DEFAULT_FEED_LIMIT, flags=None):
     """Assemble one division's board as plain JSON-serialisable data.
 
     :param badge_keys: organisation slugs to surface against each competitor.
+    :param flags: a URL pattern taking {username}, or None for no flags.
     :param in_person_key: the slug that means "competing in the hall". Rows are
         tagged rather than filtered, so the page can toggle between views
         without another round trip.
@@ -353,6 +464,7 @@ def build_contest_payload(contest, freeze_minutes, include_reveal, badge_keys=()
             'id': p.id,
             'username': p.user.user.username,
             'display_name': p.user.display_name,
+            'flag': flag_url(flags, p.user.user.username),
             'badges': [key for key in badge_keys if key in member_of],
             'in_person': bool(in_person_key) and in_person_key in member_of,
         })
@@ -410,11 +522,14 @@ def build_event_payload(request, config):
     badges, in_person_key, warnings = resolve_badges(config)
     badge_keys = [badge['key'] for badge in badges]
 
+    theme, theme_template, theme_warnings = resolve_theme(config)
+    warnings = warnings + theme_warnings
+
     boards = []
     for contest in contests:
         board = build_contest_payload(contest, config['freeze_minutes'], include_reveal,
                                       badge_keys=badge_keys, in_person_key=in_person_key,
-                                      feed_limit=config['feed_limit'])
+                                      feed_limit=config['feed_limit'], flags=config['flags'])
         board['label'] = config['labels'].get(contest.key) or contest.name
         board['in_person_count'] = sum(1 for row in board['rows'] if row['in_person'])
         boards.append(board)
@@ -430,6 +545,8 @@ def build_event_payload(request, config):
         'can_edit_tags': include_reveal,
         'badges': badges,
         'in_person_badge': in_person_key,
+        'theme': theme,
+        'theme_template': theme_template,
         'has_roster': bool(in_person_key),
         # Surfaced on the page for admins only, so a mistyped slug is noticed
         # during setup rather than after the contest.
@@ -458,17 +575,25 @@ def _safe_json(payload):
 class LiveScoreboard(View):
     """The scoreboard page itself, with the first render's data inlined."""
 
+    # An event may point at a different page with its 'template' key.
     template_name = 'contest/live-scoreboard.html'
 
     def get(self, request, event):
         config = get_event_config(event)
         payload = build_event_payload(request, config)
-        return render(request, self.template_name, {
+        return render(request, config['template'] or self.template_name, {
             'title': config['title'],
             'event': config['key'],
             'payload': payload,
             'payload_json': _safe_json(payload),
             'can_reveal': payload['can_reveal'],
+            # Styling on top of the default board: `theme` tags the page
+            # (`<html data-theme>`, `body.theme-<key>`) and `theme_template` is
+            # pulled into the head after the built-in styles. Both are None
+            # when the event has no theme, and the page renders as it always
+            # did.
+            'theme': payload['theme'],
+            'theme_template': payload['theme_template'],
             # Gates the local test fixtures baked into the template. They are a
             # development aid for exercising the live-update path without a
             # judge, and are not emitted at all in a production build.

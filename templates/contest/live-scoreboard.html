@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"{% if theme %} data-theme="{{ theme }}"{% endif %}>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>{{ title }}</title>
+    {% block base_styles %}
     <style>
         :root {
             --bg: #0e1116;
@@ -21,6 +22,7 @@
             --judging: #7a5c12;
             --judging-bright: #d29922;
             --feed-width: 23rem;
+            --flag-height: 1.05rem;
         }
 
         * { box-sizing: border-box; }
@@ -137,6 +139,21 @@
         tbody td.rank { font-weight: 700; border-left: 1px solid var(--line); border-radius: 6px 0 0 6px; }
         tbody td.team { text-align: left; font-size: 1.1rem; }
 
+        /* Competitors' own flags. Every one is drawn at the same size whatever
+           the file is, so a row of them lines up: the height is fixed, the
+           width follows the 3:2 the event asks for, and an image of some other
+           shape is cropped rather than stretched. */
+        tbody td.team .flag {
+            height: var(--flag-height);
+            width: calc(var(--flag-height) * 1.5);
+            object-fit: cover;
+            vertical-align: -0.15em;
+            margin-right: 0.5rem;
+            border-radius: 2px;
+            background: var(--line);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+        }
+
         .badge-tag {
             margin-left: 0.4rem;
             font-size: 0.65rem;
@@ -220,6 +237,13 @@
         }
         footer .legend { display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 0.9rem; }
         footer .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+        /* Carried as classes rather than inline styles so a theme can restyle
+           the key to match whatever it has done to the grid. */
+        footer .swatch.solved { background: var(--ok); }
+        footer .swatch.first { background: var(--ok-bright); box-shadow: inset 0 0 0 2px var(--first); }
+        footer .swatch.frozen { background: var(--frozen); }
+        footer .swatch.judging { background: var(--judging); }
+        footer .swatch.failed { background: var(--fail); }
 
         #reveal-bar { display: none; align-items: center; gap: 0.6rem; }
         #reveal-bar.on { display: flex; }
@@ -431,8 +455,23 @@
             .feed-item.settled .feed-chip { animation: none; }
         }
     </style>
+    {% endblock %}
+
+    {# Styling on top of the board, per event. A theme is a template in
+       templates/contest/scoreboard-themes/, named by the "theme" key in that
+       event's MCPC_SCOREBOARDS entry, and it lands here -- after everything
+       above -- so anything it declares wins. Override the :root custom
+       properties for a recolour, or write rules against the hooks the page
+       exposes: <html data-theme>, body.theme-<key>, tr.rank-1|2|3,
+       tr[data-rank], tr[data-position], and the existing cell/feed classes. #}
+    {% block theme_styles %}
+    {% if theme_template %}{% include theme_template ignore missing %}{% endif %}
+    {% endblock %}
+
+    {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}scoreboard{% if theme %} theme-{{ theme }}{% endif %}{% endblock %}">
+{% block body_start %}{% endblock %}
 <div id="page">
     <div id="main">
         <header>
@@ -476,11 +515,11 @@
         </div>
 
         <footer>
-            <span class="legend"><span class="swatch" style="background: var(--ok)"></span> Solved</span>
-            <span class="legend"><span class="swatch" style="background: var(--ok-bright); box-shadow: inset 0 0 0 2px var(--first)"></span> First to solve</span>
-            <span class="legend"><span class="swatch" style="background: var(--frozen)"></span> Frozen &mdash; submitted in the final {{ payload.freeze_minutes }} min, result withheld</span>
-            <span class="legend"><span class="swatch" style="background: var(--judging)"></span> Judging &mdash; still with the judge</span>
-            <span class="legend"><span class="swatch" style="background: var(--fail)"></span> Attempted</span>
+            <span class="legend"><span class="swatch solved"></span> Solved</span>
+            <span class="legend"><span class="swatch first"></span> First to solve</span>
+            <span class="legend"><span class="swatch frozen"></span> Frozen &mdash; submitted in the final {{ payload.freeze_minutes }} min, result withheld</span>
+            <span class="legend"><span class="swatch judging"></span> Judging &mdash; still with the judge</span>
+            <span class="legend"><span class="swatch failed"></span> Attempted</span>
             <span class="spacer"></span>
             <span id="warnings"></span>
             <span id="status-line"></span>
@@ -519,6 +558,8 @@
        the script reads it out rather than posting the form. #}
     <form id="csrf-holder" style="display: none">{% csrf_token %}</form>
 {% endif %}
+
+{% block body_end %}{% endblock %}
 
 <script id="initial-payload" type="application/json">{{ payload_json|safe }}</script>
 <script>
@@ -791,11 +832,19 @@
         var thead = document.createElement('thead');
         var headRow = document.createElement('tr');
         headRow.innerHTML = '<th class="rank">#</th><th class="team">Team</th>';
-        board.problems.forEach(function (problem) {
+        board.problems.forEach(function (problem, i) {
             var th = document.createElement('th');
             th.className = 'prob';
             th.title = problem.name;
             th.textContent = problem.label;
+            // Hooks for a theme that dresses the columns up -- an icon per
+            // problem, say. `problem` is the problem's code, so a mapping made
+            // against it survives the contest being reordered; `label` is what
+            // the column reads and `index` is where it sits, either of which is
+            // the easier key when the codes are not to hand.
+            th.dataset.problem = problem.code;
+            th.dataset.label = problem.label;
+            th.dataset.index = i + 1;
             headRow.appendChild(th);
         });
         headRow.insertAdjacentHTML('beforeend', '<th class="prob">Solved</th><th class="prob">Time</th>');
@@ -803,9 +852,17 @@
         table.appendChild(thead);
 
         var tbody = document.createElement('tbody');
-        rows.forEach(function (row) {
+        rows.forEach(function (row, position) {
             var tr = document.createElement('tr');
             tr.dataset.row = row.id;
+            // Hooks for themes. `rank` is the placing shown in the first
+            // column and ties share it; `position` is where the row physically
+            // sits, so a theme can stripe or stagger rows without tripping
+            // over a tie. `rank-1|2|3` is the podium, spelled as a class
+            // because that is the one a theme reaches for most.
+            tr.dataset.rank = row.displayRank;
+            tr.dataset.position = position + 1;
+            if (row.displayRank <= 3) tr.classList.add('rank-' + row.displayRank);
 
             var rank = document.createElement('td');
             rank.className = 'rank';
@@ -815,6 +872,18 @@
             var team = document.createElement('td');
             team.className = 'team';
             team.textContent = row.display_name || row.username;
+            if (row.flag) {
+                var flag = document.createElement('img');
+                flag.className = 'flag';
+                flag.src = row.flag;
+                flag.alt = '';
+                // The event points at a URL per competitor without checking
+                // it, so most of the time some of them will not exist. A
+                // competitor without a flag should look like a competitor
+                // without a flag, not like a broken page.
+                flag.addEventListener('error', function () { flag.remove(); });
+                team.insertBefore(flag, team.firstChild);
+            }
             (row.badges || []).forEach(function (key) {
                 var badge = BADGES[key];
                 if (!badge) return;
@@ -834,6 +903,9 @@
 
             row.cells.forEach(function (cell, i) {
                 var td = renderCell(cell, cell.state === 'solved' && firsts[i] === cell.time);
+                // Same hook as the column header carries, so a theme can dress
+                // a whole column -- header and cells -- with one key.
+                if (board.problems[i]) td.dataset.problem = board.problems[i].code;
                 var key = row.id + ':' + i;
 
                 // Flash anything that differs from the last time this board was

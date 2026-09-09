@@ -1,0 +1,202 @@
+{# Olympics theme for the live scoreboard. Included in the page's <head> after
+   the built-in styles, so everything here overrides them. See README.md in
+   this directory for the hooks available.
+
+   What it does:
+
+   * a gold medal on the first solve of each problem, in place of the glowing
+     yellow border;
+   * a sport pictogram in each problem column header, in place of the number,
+     on a wash of that sport's colour.
+
+   The artwork lives in `resources/scoreboard-themes/olympics/`, so a new or
+   changed icon needs `./scripts/copy_static` before it shows up. #}
+<!-- scoreboard theme: olympics -->
+
+{# ---------------------------------------------------------------------------
+   Sports: the icon file, and the colour that goes with it.
+
+   The colour is the accent already inside the SVG -- the disc the figure sits
+   on -- repeated here because CSS cannot read it back out of the file. Change
+   one and change the other, or the header will not match its own icon.
+
+--------------------------------------------------------------------------- #}
+{% set sports = {
+    'archery':             '#8338EC',
+    'artistic-gymnastics': '#ED3939',
+    'athletics':           '#3A86FF',
+    'bouldering':          '#FFBE0B',
+    'cycling':             '#46B2D9',
+    'fencing':             '#4AFA44',
+    'golf':                '#A8ED39',
+    'pentathlon':          '#39BD5C',
+    'rhythmic-gymnastics': '#E139ED',
+    'sailing':             '#FF006E',
+    'skateboarding':       '#FB5607',
+} %}
+
+{# ---------------------------------------------------------------------------
+   The lookup table: which sport each problem wears, per division.
+
+   Keys are the contest key (the division, as it appears in MCPC_SCOREBOARDS)
+   and the problem's *code* -- not its position -- so a mapping survives the
+   contest being reordered. Values name a sport above.
+
+   A problem missing from the table keeps its number and stays untinted, which
+   is what a division looks like before anyone has filled it in; the four at
+   the end of each division below are deliberately left out to show it. A sport
+   with no matching SVG is the one mistake that is loud: the page will raise on
+   the missing static file rather than render a blank column, so add the file
+   (and run `./scripts/copy_static`) in the same breath as the entry.
+--------------------------------------------------------------------------- #}
+{% set problem_icons = {
+    'devcon1': {
+        'devp01': 'golf',
+        'devp02': 'artistic-gymnastics',
+        'devp03': 'sailing',
+        'devp04': 'pentathlon',
+        'devp05': 'skateboarding',
+    },
+    'devcon2': {
+        'devp07': 'sailing',
+        'devp08': 'skateboarding',
+        'devp09': 'golf',
+        'devp10': 'athletics',
+        'devp11': 'pentathlon',
+        'devp12': 'artistic-gymnastics',
+    },
+    'diva': {
+        'slicktricks': 'skateboarding',
+        'polyathlon': 'pentathlon',
+        'golfroyale': 'golf',
+        'effortless': 'rhythmic-gymnastics',
+        'cyclingpreshow': 'cycling',
+        'polevaultexpress': 'athletics',
+        'fencingshortcuts': 'fencing',
+        'crossingsails': 'sailing',
+        'boulderingwall': 'bouldering',
+        'balancebeamlanding': 'artistic-gymnastics',
+        'archerybannerstrips': 'archery'
+    }
+} %}
+
+<style>
+    /* ------------------------------------------------------------------ */
+    /* Palette                                                             */
+    /* ------------------------------------------------------------------ */
+
+    :root {
+        /* The board's own colours are otherwise left alone -- the medal, the
+           pictograms and the column washes are doing the talking. */
+
+        /* Sizes the theme reuses, so one edit moves everything. */
+        --medal-size: 1.35rem;
+        --prob-icon-size: 2.05rem;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* First to solve: a gold medal, not a glowing border                  */
+    /* ------------------------------------------------------------------ */
+
+    body.theme-olympics td.cell.solved.first {
+        /* The ring is what the medal replaces; the brighter green stays, so a
+           first solve still reads as one from the back of the hall even at a
+           glance where the medal is too small to make out. */
+        box-shadow: none;
+        position: relative;
+    }
+
+    body.theme-olympics td.cell.solved.first::after {
+        content: "";
+        position: absolute;
+        top: calc(var(--medal-size) / -3.4);
+        right: calc(var(--medal-size) / -3.8);
+        width: var(--medal-size);
+        height: var(--medal-size);
+        background: url("{{ static('scoreboard-themes/olympics/medal-gold.svg') }}") center / contain no-repeat;
+        /* Keeps the medal off the green it sits on, and off whatever is
+           behind it when it overhangs into the next column. */
+        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+        pointer-events: none;
+    }
+
+    /* The cell is animated on a new solve; let the medal ride along rather
+       than appearing after the flash has finished. */
+    body.theme-olympics td.cell.solved.first.flash-solve::after {
+        animation: medal-drop 0.6s cubic-bezier(0.22, 1.2, 0.36, 1);
+    }
+
+    @keyframes medal-drop {
+        0% { opacity: 0; transform: translateY(-0.5rem) rotate(-25deg) scale(0.6); }
+        100% { opacity: 1; transform: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        body.theme-olympics td.cell.solved.first.flash-solve::after { animation: none; }
+    }
+
+    /* The footer key, so it still describes what the grid is doing. */
+    body.theme-olympics footer .swatch.first {
+        width: 15px;
+        height: 15px;
+        border-radius: 0;
+        box-shadow: none;
+        background: url("{{ static('scoreboard-themes/olympics/medal-gold.svg') }}") center / contain no-repeat;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Problem headers: a pictogram instead of a number                    */
+    /* ------------------------------------------------------------------ */
+
+    /* The number is hidden rather than removed -- the column still carries the
+       problem's name as its tooltip, and ::before puts the number back when
+       the problem has no icon, so a half-filled table reads as a mix of icons
+       and numbers instead of a row of gaps. */
+    body.theme-olympics thead th.prob[data-problem] {
+        font-size: 0;
+        padding-top: 0.3rem;
+        padding-bottom: 0.3rem;
+    }
+
+    body.theme-olympics thead th.prob[data-problem]::before {
+        content: attr(data-label);
+        display: block;
+        width: var(--prob-icon-size);
+        height: var(--prob-icon-size);
+        margin: 0 auto;
+        /* The table below fills in `background-image` per problem, and hides
+           the number with it. A background rather than `content: url(...)`
+           because only a background honours `contain` -- generated content
+           paints the file at its own size and spills over the column. */
+        background: center / contain no-repeat;
+        /* Only ever seen when there is no icon: the plain number, as before. */
+        font-size: 0.95rem;
+        line-height: var(--prob-icon-size);
+        color: var(--muted);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Header colour                                                       */
+    /* ------------------------------------------------------------------ */
+
+    /* Each mapped column carries its sport's colour as `--col`, spent on the
+       header and nowhere below it. The grid itself is left alone: green means
+       solved and red means attempted, and anything laid over those only makes
+       them harder to read across a hall. An unmapped column falls through to
+       `transparent` and looks exactly as it always did. */
+
+    body.theme-olympics thead th.prob[data-problem] {
+        background-image: linear-gradient(to bottom, var(--col-head, transparent), transparent);
+        /* Full strength, in a rule under the icon. */
+        box-shadow: inset 0 -2px 0 var(--col, transparent);
+    }
+
+    /* ---- The table itself, one rule per problem. ---- */
+{% for division, icons in problem_icons.items() %}
+    /* {{ division }} */
+{% for code, sport in icons.items() %}
+    body.theme-olympics .panel[data-key="{{ division }}"] thead th.prob[data-problem="{{ code }}"] { --col: {{ sports[sport] }}; --col-head: {{ sports[sport] }}3a; }
+    body.theme-olympics .panel[data-key="{{ division }}"] thead th.prob[data-problem="{{ code }}"]::before { background-image: url("{{ static('scoreboard-themes/olympics/problems/' ~ sport ~ '.svg') }}"); color: transparent; }
+{% endfor %}
+{% endfor %}
+</style>
